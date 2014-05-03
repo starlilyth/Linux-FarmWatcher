@@ -1,0 +1,188 @@
+/* default.CSS for FarmManager
+
+Theme: default
+This is the original look for FarmManager. 
+
+   Updated: 20140501 
+-------------------------------------*/
+
+/* all text on the page */
+body {
+  	background-color: #FFFFFF;
+  	color: #000000;
+  	font-family: "Trebuchet MS", Helvetica, sans-serif;
+  	border: 0px;
+  	margin: 0px;
+  	padding: 0px;
+}
+
+a {
+ 	color: #000000;
+}
+
+/* OVERVIEW */
+#overview {
+  color: #ffffff;
+  position: relative;
+ 	display: block;
+ 	z-index: 1;
+  /* Safari 4-5, Chrome 1-9 */
+  	background: -webkit-gradient(linear, top, bottom, from(#0000CC), to(#3366FF));  
+  /* Safari 5.1+, Chrome 10+ */
+ 	background: -webkit-linear-gradient(top, #0000CC, #3366FF);  
+  /* Firefox 3.6+ */
+ 	background: -moz-linear-gradient(top, #0000CC, #3366FF);
+  /* IE 10 */
+  	background: -ms-linear-gradient(top, #0000CC, #3366FF);  
+  /* Opera 11.10+ */
+  	background: -o-linear-gradient(top, #0000CC, #3366FF);
+  	background-color: #222222;
+}
+.odata {
+  float: left;
+  padding: 10px;
+}
+#overviewhash {
+  font-size: 30px;
+}
+#overviewend {
+  float: none;
+  height: 63px;
+}
+#logo {
+  display:block;
+  padding: 4px;
+  height: 63px;
+  width: 155px;
+}
+#icon {
+  display:block;
+  padding: 14px;
+  height: 63px;
+  width: 155px;
+  float: right;
+}
+
+
+/* CONTENT */
+.content {
+  	padding: 12px;
+  	vertical-align: top;
+  	display: block;
+  	text-align: left;
+}
+.error {
+    color: #eee;
+    background-color: #ff0000;
+    font-weight: bold;
+}
+.warn {
+    background-color: #ffff00;
+    font-weight: bold;
+}
+.ok {
+  background-color: #00FF00;
+}
+
+/* TABLES */
+.table {
+  display: table;
+}
+.title {
+  display: table-caption;
+  text-align: center;
+  font-weight: bold;
+  font-size: larger;
+}
+.heading {
+  display: table-row;
+  font-weight: bold;
+  text-align: center;
+}
+.row {
+  display: table-row;
+}
+.cell {
+  display: table-cell;
+  border: solid #ccc;
+  border-width: thin;
+  text-align: center;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+/* FORMS */
+form{
+  border: 0;
+}
+.form {
+#  float: left;
+  border: 2px solid #ccc;
+  background: #CCFFFF;
+  padding: 10px;
+  text-align: left;
+  margin-right:auto;
+  font-size: 14px;
+}
+#poollist.form{
+  font-size: 13px;
+  display: inline-block;
+}
+#nodelist.form{
+  font-size: 13px;
+  display: inline-block;
+}
+button, input, select, textarea {
+  font-family : inherit;
+  font-size   : 100%;
+}
+input:focus {
+  background   : rgba(0,0,0,.1);
+  outline      : none;
+}
+
+/* Special Defs */
+#locsum {
+    border: 2px solid #ccc;
+    padding: 5px;
+    background-color: #00ffFF;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: left;
+    width: 80%;
+}
+#waiting {
+    background-color: #F5F5D7;
+    margin: 30px;
+    padding: 30px;
+    position: absolute;
+    top: 120px;
+}
+
+/* node tables*/
+#farm table {
+    text-align: center;
+    border: 0 none;
+    border-collapse:collapse;
+    font-size: 12px;
+    margin: 12px;
+}
+#farm td {
+  padding: 3px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border: 1px solid #cccccc;
+}
+#farm .nodehdr {
+    background-color: #C6E2FF;
+    font-weight: bold;
+}
+#farm .ndatahdr {
+    background-color: #E0FFFF;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+
+
+
