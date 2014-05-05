@@ -37,7 +37,7 @@ my $problempools = 0; my $okpools = 0;
 my $html = "<div id='farm' class='content'>"; my $head;
 if (-e $dbname) {
 	$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
-	my @locs; my $lhtml;
+	my @locs; my $lhtml;  my $phtml; 
 	my $sth = $dbh->prepare("SELECT Mgroup FROM Miners");  
 	$sth->execute();
 	while (my @glocs = $sth->fetchrow_array()) { push(@locs, (@glocs));	}
@@ -56,7 +56,7 @@ if (-e $dbname) {
 		my $all = $sth->fetchall_arrayref(); $sth->finish();
 		foreach my $row (sort { $b <=> $a } @$all) {
  			my ($ip, $port, $name, $user, $pass, $loc, $updated, $devices, $pools, $summary, $vers, $acheck) = @$row;
- 			$locnodes++; $tnodes++; my @nodemsg; my $problems = 0; my $dcount = 0; my $devtype = ""; 
+ 			$locnodes++; $tnodes++; my @nodemsg; my $problems = 0; my $dcount = 0; my $devtype = ""; my $notemp = 0;
  			while ($devices =~ m/\b(GPU|ASC|PGA)\b=\d+/g) { $locdevs++; $dcount++; }
 			my $errspan = $dcount*4;
  			$ndata .= "<TR class='nodedata'><td class='ndatahdr'>$ip";
@@ -78,8 +78,8 @@ if (-e $dbname) {
 	 				if ($pools ne "None") {
 	 				 	my $plm=0; my $pname;
 		 				while (!defined $pname) {
-							while ($pools =~ m/POOL=(\d).+,?URL=(.+?),Status=(\w+?),Priority=(\d),/g) {
-								my $poolid = $1; my $purl = $2; my $pstat = $3; my $ppri = $4;
+							while ($pools =~ m/POOL=(\d).+,?URL=(.+?),Status=(\w+?),Priority=(\d),.+,Last Share Difficulty=(\d+)\.\d+,.+,Pool Rejected%=(\d+\.\d+),/g) {
+								my $poolid = $1; my $purl = $2; my $pstat = $3; my $ppri = $4; my $pdiff = $5; my $prej = $6; 
 								if ($ppri == $plm && $pstat eq "Alive") {
 									$pname = $2 if ($purl =~ m|://(\w+-?\w+\.)+?(\w+-?\w+\.\w+:\d+)|); 
 								}
@@ -98,6 +98,7 @@ if (-e $dbname) {
 			 				$mwu = sprintf("%.2f", $mwu);
 			 				my $mrat = $1 if $summary =~ /Device Rejected%=(\d+.\d+),/;
 							$mrat =  sprintf("%.2f%%", $mrat);
+							my $mhwe = $1 if $summary =~ /Hardware Errors=(\d+),/;
 							my $mrth; my $minert; 
 							my $mname = ""; my $mvers = ""; my $avers; 
 							if ($vers =~ m/Miner=(\w+)?\s?(\d+\.\d+\.\d+),API=(\d+\.\d+)/) {
@@ -107,13 +108,20 @@ if (-e $dbname) {
 							} else {
 								$mname = "unknown";
 							}				
-							$ndata .= "<td>$mname $mvers";
-		 				  $mrth = sprintf("%dd %02d:%02d.%02d",(gmtime $mrt)[7,2,1,0]);
+							$ndata .= "<td>$mname v$mvers";
+		 				  $mrth = sprintf("%dD %02d:%02d",(gmtime $mrt)[7,2,1]);
 		 				  $ndata .= "<br>" . $mrth . "</td>";
 		 					$ndata .= "<td>" . $mmhs . " Mh/s</td>";
 		 					$ndata .= $pdata;
 		 					$ndata .= "<td>" . $mwu . "</td>";
 		 					$ndata .= "<td>" . $mrat . "</td>";
+				 			if ($mhwe > 1) {
+				 				  $problems++;
+				 				  push(@nodemsg, "Hardware Errors");
+				 				  $ndata .= "<td class='error'>" . $mhwe . "</td>";
+				 			} else {
+				 				 $ndata .= "<td>" . $mhwe . "</td>";
+				 			}
 		 				} else {
 		 				  $problems++;
 		 				  push(@nodemsg, "Miner Stopped");
@@ -136,37 +144,26 @@ if (-e $dbname) {
 							$tothash += $dhash;
 							$lochash += $dhash;											
 						}	
-						while ($devices =~ m/\b(GPU|ASC|PGA)\b=(\d).+,Hardware\sErrors=(\d+),/g) {
-							my $devid = $2; my $dhwe = $3; 
 
-			 				if ($dhwe > 1) {
-		 						$dproblem[$devid]++;
-			 				  $problems++;
-			 				  push(@nodemsg, "Hardware Errors");
-			 				  $ddata .= "<td class='error'>" . $dhwe . "</td>";
-			 				} else {
-			 				  $ddata .= "<td>" . $dhwe . "</td>";
-			 				}
-			 			}
 						while ($devices =~ m/\b(GPU|ASC|PGA)\b=(\d).+,Temperature=(\d+.\d+),/g) {
 							my $devid = $2; my $dtemp = $3; 
-					 		if ($dtemp > $conf{monitoring}{monitor_temp_hi} && $dtemp > 0) {
-		 			 			$dproblem[$devid]++; 
-		 			 			$problems++;
-						 		push(@nodemsg, "Device $devid is over maximum temp");						
-						 		$ddata .= "<td class='error'>";
-						 	} elsif ($dtemp < $conf{monitoring}{monitor_temp_lo} && $dtemp > 0) {
-						 		$dproblem[$devid]++; 
-						 		$problems++;
-						 		push(@nodemsg, "Device $devid is below minimum temp");	
-						 		$ddata .= "<td class='error'>";
-							} elsif ($dtemp == 0) {
-						 		$ddata .= "<td class='warn'>";
-							} else {
-								$ddata .= "<td>";
+							if ($dtemp > 0) {
+						 		if ($dtemp > $conf{monitoring}{monitor_temp_hi}) {
+			 			 			$dproblem[$devid]++; 
+			 			 			$problems++;
+							 		push(@nodemsg, "Device $devid is over maximum temp");						
+							 		$ddata .= "<td class='error'>";
+							 	} elsif ($dtemp < $conf{monitoring}{monitor_temp_lo}) {
+							 		$dproblem[$devid]++; 
+							 		$problems++;
+							 		push(@nodemsg, "Device $devid is below minimum temp");	
+							 		$ddata .= "<td class='error'>";
+								} else {
+									$ddata .= "<td>";
+								}
+							 	$ddata .= sprintf("%.0f", $dtemp) . '</TD>';
+							 	$notemp++
 							}
-
-						 	$ddata .= sprintf("%.0f", $dtemp) . '</TD>';
 						}
 						while ($devices =~ m/GPU=(\d).+,Fan\sSpeed=(\d+),/g) {
 							my $devid = $1; my $gfans = $2; 
@@ -205,17 +202,20 @@ if (-e $dbname) {
  			$nhead .= "<TR class='nodehdr'>";
 			$nhead .= "<TD>IP / Port</TD>";
 			$nhead .= "<TD>Hostname</TD>";
-			$nhead .= "<TD>Vers / Runtime</TD>";
+			$nhead .= "<TD>Miner</TD>";
 			$nhead .= "<TD>Hashrate</TD>";
 			$nhead .= "<TD>Active Pool</TD>";
 			$nhead .= "<TD>WU</TD>";
 			$nhead .= "<TD>Rej</TD>";
+			$nhead .= "<TD>HW</TD>";
  			$nhead .= "<TD colspan=$dcount>$devtype Hashrate";
  			$nhead .= "s" if ($dcount > 1); 
- 			$nhead .= "</TD><TD colspan=$dcount>HW Errors</TD>";
- 			$nhead .= "<TD colspan=$dcount>Temperature";
- 			$nhead .= "s" if ($dcount > 1); 
- 			$nhead .= "</TD>";
+# 			$nhead .= "</TD><TD colspan=$dcount>HW Errors</TD>";
+			if ($notemp > 0) {
+ 				$nhead .= "<TD colspan=$dcount>Temperature";
+ 				$nhead .= "s" if ($dcount > 1); 
+ 				$nhead .= "</TD>";
+ 			}
 	 		if ($devices =~ m/^GPU=/) {
  				$nhead .= "<TD colspan=$dcount>Fan Speed";
 	 			$nhead .= "s" if ($dcount > 1); 
@@ -248,12 +248,49 @@ if (-e $dbname) {
 		}
 		$lhtml .= '</div>';
 		$lhtml .= $nhtml;
-#		$lhtml .= '</div>';
 	}
 
 	$html .= $lhtml;
-	$html .= "</div>";
 
+#POOLS
+	$phtml = "<div id='pools'>";
+	$phtml .= "<div id='locsum'>";
+	$phtml .= "Active Pools";
+	$phtml .= "</div>";
+
+	$phtml .= "<div class='table' id='pooltable'>";
+	$phtml .= "<div class='row' id='pthdr'>";
+  $phtml .= "<div class='cell'><p>URL</p></div>";
+  $phtml .= "<div class='cell'><p>Worker</p></div>";
+  $phtml .= "<div class='cell'><p>Difficulty</p></div>";
+  $phtml .= "<div class='cell'><p>Reject %</p></div>";
+  $phtml .= "<div class='cell'><p>Node Pri</p></div>";
+  $phtml .= "<div class='cell'><p>Alias</p></div>";
+	$phtml .= "</div>";
+	
+	$sth = $dbh->prepare("SELECT * FROM Pools"); $sth->execute(); 
+	my $pall = $sth->fetchall_arrayref(); $sth->finish();	
+	my $pcount = 0;
+	foreach my $prow (@$pall) {
+ 		my ($purl, $puser, $ppass, $pupdated, $pstatus, $ppri, $pdiff, $prej, $palias, $plast) = @$prow;
+ 		if ($plast +90 > $now) {
+			$phtml .= "<div class='row'>";
+	    $phtml .= "<div class='cell'><p>$purl</p></div>";
+			if (length($puser) > 20) { 
+	    	$puser = substr($puser, 0, 6) . " ... " . substr($puser, -6, 6) if (index($puser, '.') < 0);
+	  	} 
+	    $phtml .= "<div class='cell'><p>$puser</p></div>";
+	    $phtml .= "<div class='cell'><p>$pdiff</p></div>";
+	    $phtml .= "<div class='cell'><p>$prej</p></div>";
+	    $phtml .= "<div class='cell'><p>$ppri</p></div>";
+	    $phtml .= "<div class='cell'><p>$palias</p></div>";
+	    $phtml .= "</div>";
+	    $pcount++;
+	  }  
+  }
+	$phtml .= "</div></div>";
+	$html .= $phtml; 
+	$html .= "</div>";
 
 	$head = "<div id='overview'>";	
 		$head .= "<div id='logo' class='odata'><IMG src='/IFMI/IFMI-FM-logo.png'></div>" ;	
@@ -314,17 +351,19 @@ if (-e $dbname) {
 		$head .= 's' if ($tlocs > 1);
 		$head .= '<br>';
 		if ($problemnodes == 0) {	
-			$head .= "All nodes are OK<br>";
+			$head .= "All nodes are OK";
 		} else {
 			$head .= $problemnodes . " node";
 			if ($problemnodes == 1) {
 				$head .= ' has ';
 			} else {
 	 			$head .= 's have ';
-			}    
+			}    		
+			$head .= $totproblems . " problem";
+			$head .= 's' if ($totproblems != 1);
 		}
-		$head .= $totproblems . " problem";
-		$head .= 's' if ($totproblems != 1);
+		$head .= "<br>$pcount active pool";
+		$head .= 's' if ($pcount != 1);
 		$head .= "</div>";
 		$head .= "<div id='icon' class='odata'><a href='farmsettings.pl'><img src='/IFMI/gear.png'></a></div>";
 		$head .= "<div id='overviewend' class='odata'><br></div>";

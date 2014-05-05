@@ -23,7 +23,7 @@ sub addFMPool {
       $pmatch++ if ($pname eq $apooln && $pwkr eq $apoolu);
     } $sth->finish(); 
     if ($pmatch eq 0) {
-      $dbh->do("INSERT INTO Pools(URL, Worker, Pass, Updated, Status, Alias, LastUsed) VALUES ('NEWPOOL', '1JBovQ1D3P4YdBntbmsu6F1CuZJGw9gnV6', '', '0', 'unknown', 'DONATE', '0')");
+      $dbh->do("INSERT INTO Pools(URL, Worker, Pass, Updated, Status, Diff, Rej, Alias, LastUsed) VALUES ('NEWPOOL', '1JBovQ1D3P4YdBntbmsu6F1CuZJGw9gnV6', '', '0', 'unknown', '0', '0', 'DONATE', '0')");
       $sth = $dbh->prepare("UPDATE Pools SET URL= ?, Worker= ?, Pass= ?, Alias= ? WHERE URL='NEWPOOL'");
       $sth->execute($apooln, $apoolu, $apoolp, $apoola); $sth->finish();
     } 

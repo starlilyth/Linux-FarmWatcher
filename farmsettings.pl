@@ -87,7 +87,9 @@ my $iptxt; my $nicget = `/sbin/ifconfig`;
 }
 my $q=CGI->new();
 print header;
-print start_html( -title=>$fm_name . ' - FM Settings', -style=>{-src=>'/IFMI/fmdefault.css'});
+print start_html( -title=>$fm_name . ' - FM Settings', 
+									-style=>{-src=>'/IFMI/fmdefault.css'},  		
+									-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30'}));
 # 
 
 my $html = "<div id='confpage' class='container'>"; my $nodeh; my $phtml; my $head;
@@ -147,7 +149,7 @@ if (-e $dbname) {
 	$nodeh .= "</div>";
 	$sth = $dbh->prepare("SELECT * FROM Miners"); $sth->execute(); 
 	my $mall = $sth->fetchall_arrayref(); $sth->finish();	
-	foreach my $mrow (sort { $b <=> $a } @$mall) {
+	foreach my $mrow (sort { $a->[0] cmp $b->[0] } @$mall) {
  		my ($mip, $mport, $mhost, $muser, $mpass, $mfg, $mupdated, $mdevs, $mpools, $msum, $vers, $macc) = @$mrow;
 		$nodeh .= "<div class='row'>"; 
     $nodeh .= "<div class='cell'><p><A href=ssh://root@" . $mip . '>' . $mip . '</a></p></div>';
@@ -167,11 +169,11 @@ if (-e $dbname) {
 		}				
     $nodeh .= "<div class='cell'><p>$mname $mvers</p></div>";
     $nodeh .= "<div class='cell'>";
-		my $mplm=0; my $mpname;
+		my $mplm=0; my $mpname; 
 		if ($mpools =~ m/^POOL=/) {
 			while (!defined $mpname) {
-				while ($mpools =~ m/POOL=(\d).+,?URL=(.+?),Status=(\w+?),Priority=(\d),/g) {
-					my $mpoolid = $1; my $mpurl = $2; my $mpstat = $3; my $mppri = $4;
+				while ($mpools =~ m/POOL=(\d).+,?URL=(.+?),Status=(\w+?),Priority=(\d),.+,User=(.+?),Last/g) {
+					my $mpoolid = $1; my $mpurl = $2; my $mpstat = $3; my $mppri = $4; my $mpusr = $5;
 					if ($mppri == $mplm && $mpstat eq "Alive") {
 						$mpname = $2 if ($mpurl =~ m|://(\w+-?\w+\.)+?(\w+-?\w+\.\w+:\d+)|); 
 					}
@@ -179,11 +181,12 @@ if (-e $dbname) {
 				$mplm++;
 			}
 		}
+		
 		$mpname = "N/A" if (!defined $mpname); 
   	$nodeh .= "<p>" . $mpname . "</p>";
     $nodeh .= "</div>";
  		if ($mupdated != 0) {
- 			if ($now > $mupdated+65) {
+ 			if ($now > $mupdated+90) {
  				$mupdated = POSIX::strftime("%m-%d %H:%M", localtime($mupdated));
     		$mupdated = "<p class='warn'>$mupdated</p>";
  			} else {
@@ -203,7 +206,7 @@ if (-e $dbname) {
 	$phtml .= "<div id='poollist' class='form'>";
 	$sth = $dbh->prepare("SELECT COUNT() FROM Pools"); $sth->execute();
   my $pcount = $sth->fetchrow_arrayref->[0]; $sth->finish;
-	$phtml .= "<div class='table'><div class='title'><p>Pools ($pcount total)</p></div>";
+	$phtml .= "<div class='table'><div class='title'><p>$pcount Pools</p></div>";
 	$phtml .= "<div class='row'>";
 	$phtml .= "<form name='padd' method='POST'><b>Add Pool</b> ";
 	$phtml .= "<input type='text' size='45' placeholder='MiningURL:portnumber' name='npoolurl' required> ";
@@ -236,7 +239,6 @@ if (-e $dbname) {
 
 	$phtml .= "<div class='row'>";
   $phtml .= "<div class='heading'>";
-  $phtml .= "<div class='cell'><p>ID</p></div>";
   $phtml .= "<div class='cell'><p>URL</p></div>";
   $phtml .= "<div class='cell'><p>Worker</p></div>";
   $phtml .= "<div class='cell'><p>Password</p></div>";
@@ -244,19 +246,17 @@ if (-e $dbname) {
   $phtml .= "<div class='cell'><p>Status</p></div>";
   $phtml .= "<div class='cell'><p>Notify</p></div>";
   $phtml .= "<div class='cell'><p>Last Used</p></div>";
-  $phtml .= "<div class='cell'><p> </p></div>";
+#  $phtml .= "<div class='cell'><p> </p></div>";
 	$phtml .= "</div>";
 	$sth = $dbh->prepare("SELECT * FROM Pools"); $sth->execute(); 
 	my $pall = $sth->fetchall_arrayref(); $sth->finish();	
-	my $poid = 0;
-	foreach my $prow (@$pall) {
- 		my ($purl, $puser, $ppass, $pupdated, $pstatus, $palias, $plast) = @$prow;
+	foreach my $prow (sort { $b->[9] <=> $a->[9] } @$pall) {
+ 		my ($purl, $puser, $ppass, $pupdated, $pstatus, $ppri, $pdiff, $prej, $palias, $plast) = @$prow;
 		my $pusr = $puser;
 		if (length($pusr) > 20) { 
 	    $pusr = substr($pusr, 0, 6) . " ... " . substr($pusr, -6, 6) if (index($pusr, '.') < 0);
 	  }
-		$phtml .= "<div class='row'>"; $poid++;
-    $phtml .= "<div class='cell'><p>$poid</p></div>";
+		$phtml .= "<div class='row'>"; 
     $phtml .= "<div class='cell'><p>$purl</p></div>";
     $phtml .= "<div class='cell'><p>$pusr</p></div>";
     $ppass = "(none)" if ($ppass eq "");
@@ -285,14 +285,24 @@ if (-e $dbname) {
 	  } else { 
  	  	$phtml .= "<input type='checkbox' name='plnotify'>Live ";
 	  }
-	  $phtml .= "<input type='submit' value='Save'></form>";    
+	  $phtml .= "<br><input type='submit' value='Save'></form>";    
     $phtml .= "</div>";
+		if ($plast != 0) {
+ 			if ($plast +90 > $now) {
+ 				$plast = "Active";
+			} else {
+		 		$plast = POSIX::strftime("%m-%d %H:%M", localtime($plast));
+		 	}
+ 		} else { $plast = "unknown"; }
+    if ($pupdated + 120 < $now) {
+ 			$phtml .= "<div class='cell'>";
+    	$phtml .= "<form name='pdelete' method='POST'><input type='hidden' name='deluser' value='$puser'>";
+    	$phtml .= "<input type='hidden' name='delpool' value='$purl'><input type='submit' value='Delete'>";
+	  	$phtml .= "</form></div>";
+ 	  } else {
+	    $phtml .= "<div class='cell'><p>$plast</p></div>";
+	  }
 
-    $phtml .= "<div class='cell'><p>$plast</p></div>";
-    $phtml .= "<div class='cell'>";
-    $phtml .= "<form name='pdelete' method='POST'><input type='hidden' name='deluser' value='$puser'>";
-    $phtml .= "<input type='hidden' name='delpool' value='$purl'><input type='submit' value='Delete'>";
-	  $phtml .= "</form></div>";
     $phtml .= "</div>";
  	}
 	$phtml .= "</div>";

@@ -151,6 +151,20 @@ input:focus {
     text-align: left;
     width: 80%;
 }
+#pooltable {
+    border: 0px none;
+    padding: 8px;
+    font-size: 13px;
+    text-align: left;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+#pthdr {
+    font-size: 12px;
+    background-color: #C6E2FF;
+    font-weight: bold;
+}
+
 #waiting {
     background-color: #F5F5D7;
     margin: 30px;
