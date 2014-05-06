@@ -81,9 +81,9 @@ if (defined $npn) {
 }
 # Now carry on
 my $fm_name = `hostname`; chomp $fm_name;
-my $iptxt; my $nicget = `/sbin/ifconfig`; 
-  while ($nicget =~ m/(\w\w\w\w?\d:0)\s.+\n\s+inet addr:(\d+\.\d+\.\d+\.\d+)\s/g) {
-  $iptxt = $2; 
+my $iptxt = "1.1.1.1"; my $nicget = `/sbin/ifconfig`; 
+  while ($nicget =~ m/(\w\w\w\w?\d)(:0)?\s.+\n\s+inet addr:(\d+\.\d+\.\d+\.\d+)\s/g) {
+  $iptxt = $3; 
 }
 my $q=CGI->new();
 print header;
@@ -141,11 +141,12 @@ if (-e $dbname) {
   $nodeh .= "<div class='cell'><p>Port</p></div>";
   $nodeh .= "<div class='cell'><p>Hostname</p></div>";
   $nodeh .= "<div class='cell'><p>Farm Group</p></div>";
+  $nodeh .= "<div class='cell'><p>Last Update</p></div>";
   $nodeh .= "<div class='cell'><p>Status</p></div>";
   $nodeh .= "<div class='cell'><p>Version</p></div>";
   $nodeh .= "<div class='cell'><p>Active Pool</p></div>";
-  $nodeh .= "<div class='cell'><p>Last Update</p></div>";
-  $nodeh .= "<div class='cell'><p> </p></div>";
+  $nodeh .= "<div class='cell'><p>Mon. Profile</p></div>";  
+  $nodeh .= "<div class='cell'><p>Remove</p></div>";
 	$nodeh .= "</div>";
 	$sth = $dbh->prepare("SELECT * FROM Miners"); $sth->execute(); 
 	my $mall = $sth->fetchall_arrayref(); $sth->finish();	
@@ -156,10 +157,21 @@ if (-e $dbname) {
     $nodeh .= "<div class='cell'><p>$mport</p></div>";
     $nodeh .= "<div class='cell'><p><A href=https://$mip/index.html>$mhost</a></p></div>";
     $nodeh .= "<div class='cell'><p>$mfg</p></div>";
+ 		if ($mupdated != 0) {
+ 			if ($now > $mupdated+90) {
+ 				$mupdated = POSIX::strftime("%m-%d %H:%M", localtime($mupdated));
+    		$mupdated = "<p class='warn'>$mupdated</p>";
+ 			} else {
+  	  	$mupdated = "<p class='ok'>Current</p>";
+    	}
+    } else { $mupdated = "<p class='warn'>never</p>"; }
+    $nodeh .= "<div class='cell'>$mupdated</div>";
     $macc = "<p class='ok'>R W</p>" if ($macc eq "S");
     $macc = "<p class='warn'>R O</p>" if ($macc eq "E");
-    $macc = "<p>U</p>" if ($macc eq "U");    
+    $macc = "<p class='warn'>U<small>navailable</small></p>" if ($macc eq "U");
+    $macc = "<p class='error'>F<small>ailed<br>connection</small></p>" if ($macc eq "F");
     $nodeh .= "<div class='cell'>$macc</div>";
+
 		my $mname = ""; my $mvers = "";
 		if ($vers =~ m/Miner=(\w+)?\s?(\d+\.\d+\.\d+),API/) {
 			$mname = $1 if (defined $1);
@@ -180,24 +192,17 @@ if (-e $dbname) {
 				}
 				$mplm++;
 			}
-		}
-		
+		}		
 		$mpname = "N/A" if (!defined $mpname); 
   	$nodeh .= "<p>" . $mpname . "</p>";
     $nodeh .= "</div>";
- 		if ($mupdated != 0) {
- 			if ($now > $mupdated+90) {
- 				$mupdated = POSIX::strftime("%m-%d %H:%M", localtime($mupdated));
-    		$mupdated = "<p class='warn'>$mupdated</p>";
- 			} else {
-	    	$mupdated = POSIX::strftime("%m-%d %H:%M", localtime($mupdated));
-  	  	$mupdated = "<p>$mupdated</p>";
-    	}
-    } else { $mupdated = "<p class='warn'>never</p>"; }
-    $nodeh .= "<div class='cell'>$mupdated</div>";
+    $nodeh .= "<div class='cell'>";
+    $nodeh .= "<form name='monpro' method='POST'><input type='hidden' name='' value='$'>";
+    $nodeh .= "<input type='hidden' name='' value='$'><input type='submit' value='Save'>";
+	  $nodeh .= "</form></div>";
     $nodeh .= "<div class='cell'>";
     $nodeh .= "<form name='mdelete' method='POST'><input type='hidden' name='delport' value='$mport'>";
-    $nodeh .= "<input type='hidden' name='delnode' value='$mip'><input type='submit' value='Delete'>";
+    $nodeh .= "<input type='hidden' name='delnode' value='$mip'><input type='submit' value='X'>";
 	  $nodeh .= "</form></div>";
     $nodeh .= "</div>";
  	}
@@ -289,7 +294,7 @@ if (-e $dbname) {
     $phtml .= "</div>";
 		if ($plast != 0) {
  			if ($plast +90 > $now) {
- 				$plast = "Active";
+ 				$plast = "<div class='ok'>Active</div>";
 			} else {
 		 		$plast = POSIX::strftime("%m-%d %H:%M", localtime($plast));
 		 	}
@@ -297,7 +302,7 @@ if (-e $dbname) {
     if ($pupdated + 120 < $now) {
  			$phtml .= "<div class='cell'>";
     	$phtml .= "<form name='pdelete' method='POST'><input type='hidden' name='deluser' value='$puser'>";
-    	$phtml .= "<input type='hidden' name='delpool' value='$purl'><input type='submit' value='Delete'>";
+    	$phtml .= "<input type='hidden' name='delpool' value='$purl'><input type='submit' value='Remove'>";
 	  	$phtml .= "</form></div>";
  	  } else {
 	    $phtml .= "<div class='cell'><p>$plast</p></div>";

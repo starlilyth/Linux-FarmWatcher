@@ -87,6 +87,8 @@ a {
 /* TABLES */
 .table {
   display: table;
+  border-collapse: collapse;
+  margin: 12px;
 }
 .title {
   display: table-caption;

@@ -15,19 +15,8 @@ my $conffile = "/opt/ifmi/farmmanager.conf";
 my $now = time;
 
 # Now carry on
-my $fm_name = `hostname`; chomp $fm_name;
-my $iptxt; my $nicget = `/sbin/ifconfig`; 
-  while ($nicget =~ m/(\w\w\w\w?\d:0)\s.+\n\s+inet addr:(\d+\.\d+\.\d+\.\d+)\s/g) {
-  $iptxt = $2; 
-}
-my $q=CGI->new();
-print header;
-print start_html( -title=>$fm_name . ' - Farm Manager', 
-		-style=>{-src=>'/IFMI/fmdefault.css'},  
-		-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30'})  
-		);
-# 
-my $tothash = 0; my $totproblems = 0;
+
+my $tothash = 0; my $thrh; my $totproblems = 0;
 my $tlocs = 0; my $tnodes = 0;
 my $problemdevs = 0; my $okdevs = 0;
 my $problemascs = 0; my $okascs = 0;
@@ -253,12 +242,8 @@ if (-e $dbname) {
 	$html .= $lhtml;
 
 #POOLS
-	$phtml = "<div id='pools'>";
-	$phtml .= "<div id='locsum'>";
-	$phtml .= "Active Pools";
-	$phtml .= "</div>";
 
-	$phtml .= "<div class='table' id='pooltable'>";
+	$phtml = "<div class='table' id='pooltable'>";
 	$phtml .= "<div class='row' id='pthdr'>";
   $phtml .= "<div class='cell'><p>URL</p></div>";
   $phtml .= "<div class='cell'><p>Worker</p></div>";
@@ -289,6 +274,11 @@ if (-e $dbname) {
 	  }  
   }
 	$phtml .= "</div></div>";
+
+	my $phdr = "<div id='pools'><div id='locsum'>$pcount Active Pool";
+	$phdr .= 's' if ($pcount != 1);
+	$phdr .= "</div>";
+	$html .= $phdr; 
 	$html .= $phtml; 
 	$html .= "</div>";
 
@@ -296,7 +286,8 @@ if (-e $dbname) {
 		$head .= "<div id='logo' class='odata'><IMG src='/IFMI/IFMI-FM-logo.png'></div>" ;	
 	
 		$head .= "<div id='overviewhash' class='odata'>";
-		$head .= sprintf("%.2f", $tothash / 1000 ) . " Mh/s</div>";
+		$thrh = sprintf("%.2f", $tothash / 1000 );
+		$head .= "$thrh Mh/s</div>";
 
 		$head .= "<div id='overviewdevs' class='odata'>";    
 		if (($okgpus + $problemgpus) >0) {
@@ -373,6 +364,14 @@ if (-e $dbname) {
 	$html .= "<div id='waiting'><h1>Miner database not available!</H1><P>&nbsp;<P></div>";
 }	
 
+my $fm_name = `hostname`; chomp $fm_name;
+my $q=CGI->new();
+print header;
+print start_html( -title=>$fm_name . ' - ' . $thrh  . ' Mh/s', 
+		-style=>{-src=>'/IFMI/fmdefault.css'},  
+		-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30'})  
+		);
+# 
 print "<div id='wrap'>";
 print $head;
 print $html;
