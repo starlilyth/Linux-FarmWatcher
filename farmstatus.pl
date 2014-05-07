@@ -55,9 +55,10 @@ if (-e $dbname) {
   			$ddata .= "<td colspan=9><i>This node has never been reached</i></td>";
   		} else { 
 				my $checkin = ($now - $updated);
-				if ($checkin > 90) {
+				if ($checkin > 125) {
 					my $missed = int($checkin/60);
 					$locproblems++;	$problemnodes++; $totproblems++;
+
 					push(@nodemsg, "Missed $missed update");
 					$nodemsg[@nodemsg-1] .= "s" if ($missed > 1);			
 					$ndata .= "<td class='error' colspan=5>$nodemsg[0]</td>";

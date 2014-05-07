@@ -158,11 +158,12 @@ if (-e $dbname) {
     $nodeh .= "<div class='cell'><p><A href=https://$mip/index.html>$mhost</a></p></div>";
     $nodeh .= "<div class='cell'><p>$mfg</p></div>";
  		if ($mupdated != 0) {
- 			if ($now > $mupdated+90) {
+ 			if ($now > $mupdated+65) {
  				$mupdated = POSIX::strftime("%m-%d %H:%M", localtime($mupdated));
     		$mupdated = "<p class='warn'>$mupdated</p>";
  			} else {
-  	  	$mupdated = "<p class='ok'>Current</p>";
+ 				$mupdated = POSIX::strftime("%m-%d %H:%M", localtime($mupdated));
+  	  	$mupdated = "<p class='ok'>$mupdated</p>";
     	}
     } else { $mupdated = "<p class='warn'>never</p>"; }
     $nodeh .= "<div class='cell'>$mupdated</div>";

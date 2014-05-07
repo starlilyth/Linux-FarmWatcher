@@ -5,99 +5,70 @@
 use warnings;
 use strict;
 use IO::Socket::INET;
-require '/opt/ifmi/fm-common.pl';
 use DBI;
 $SIG{CHLD} = 'IGNORE';
+require '/opt/ifmi/fm-common.pl';
 
 sub doGetData {
-	my $dbname = "/opt/ifmi/fm.db"; my $dbh; my $sth;
+	my $dbname = "/opt/ifmi/fm.db"; my $dbh; 
 	my $now = time;
 	if (! -e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
-
 		$dbh->do("CREATE TABLE Miners(IP TEXT, Port INTEGER, Name TEXT, User TEXT, Pass TEXT, Mgroup TEXT, Updated INT, Devices TEXT, Pools TEXT, Summary TEXT, Version TEXT, Access TEXT)");
 		$dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access) VALUES ('192.168.0.1', '4028', 'unknown', '', '', 'Default', '0', 'None', 'None', 'None', 'None', 'E')");
-
 		$dbh->do("CREATE TABLE Pools(URL TEXT, Worker TEXT, Pass TEXT, Updated INT, Status TEXT, Pri INT, Diff INT, Rej INT, Alias TEXT, LastUsed INT)");
 		$dbh->do("INSERT INTO Pools(URL, Worker, Pass, Updated, Status, Pri, Diff, Rej, Alias, LastUsed) VALUES ('NEWPOOL', '1JBovQ1D3P4YdBntbmsu6F1CuZJGw9gnV6', '', '$now', 'unknown', '0', '0', '0', 'DONATE', '0')");
-		$sth = $dbh->prepare("UPDATE Pools SET URL= ? WHERE URL='NEWPOOL'");
+		my $dsth = $dbh->prepare("UPDATE Pools SET URL= ? WHERE URL='NEWPOOL'");
 		my $donatepool = "stratum+tcp://mine.coinshift.com:3333";
-		$sth->execute($donatepool); $sth->finish();
-		`chown www-data $dbname`;
+		$dsth->execute($donatepool); $dsth->finish();
+		my $apacheuser = "unknown";
+		$apacheuser = "apache" if (-e "/etc/redhat-release");
+		$apacheuser = "www-data" if (-e "/etc/debian_version"); 
+		`chown $apacheuser $dbname` if ($apacheuser ne "unknown");
 	} else { 
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
 	}
 
 	my $pid; 
-	my $all = $dbh->selectall_arrayref("SELECT * FROM Miners");
+	my $all = $dbh->selectall_arrayref("SELECT IP, Port, Updated FROM Miners");
 	foreach my $row (@$all) {
-	  my ($ip, $port, $name, $user, $pass, $loc, $updated, $devs, $pools, $summary, $vers) = @$row;
-		next if $pid = fork;    # Parent goes to next server.
-  	die "fork failed: $!" unless defined $pid;
+	  my ($ip, $port, $updated) = @$row;
+		next if $pid = fork; die "fork failed: $!" unless defined $pid;
 		if ($pid == 0) {
-			setpgrp;
+			my $cdbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr; my $sth; 
 		  my $acheck = &sendAPIcommand("privileged","",$ip,$port);
+		  $acheck = $1 if ($acheck =~ m/STATUS=(\w),/g);	  	
 		  if (defined $acheck && $acheck ne "" && $acheck ne "socket failed") {
-		  	$acheck = $1 if ($acheck =~ m/STATUS=(\w),/g);	  	
 		  	my $ttu = $updated+50;
 		  	if ($now > $ttu) {
-					$sth = $dbh->prepare("UPDATE Miners SET Access= ? WHERE IP= ? AND Port= ? ");
-					$sth->execute($acheck, $ip, $port); $sth->finish();
-		  	}	
-		  	if ($now > $ttu || $vers eq "None") {
 			  	my $nvers = &sendAPIcommand("version","",$ip,$port);
 		  		$nvers = $1 if $nvers =~ m/VERSION,(.+)/g;
-					if (defined $nvers) {
-						$sth = $dbh->prepare("UPDATE Miners SET Version= ? WHERE IP= ? AND Port= ? ");
-						$sth->execute($nvers, $ip, $port); $sth->finish();
-		  		}
-		  	}
-		  	if ($now > $ttu || $summary eq "None") {
 					my $nsum = &sendAPIcommand("summary","",$ip,$port);
 					$nsum = $1 if $nsum =~ m/SUMMARY,(.+?)\|/g;
-					if (defined $nsum) {
-						$sth = $dbh->prepare("UPDATE Miners SET Summary= ? WHERE IP= ? AND Port= ? ");
-						$sth->execute($nsum, $ip, $port); $sth->finish();
-					}
-				}  	
-		  	if ($now > $ttu || $pools eq "None") {
 					my $npools = &sendAPIcommand("pools","",$ip,$port);
-					if ($npools =~ m/STATUS=S,.+?\|(.+)/g) {
-						my $poolsd = $1;
-						$poolsd =~ s/\|/\n/g;
-						$sth = $dbh->prepare("UPDATE Miners SET Pools= ? WHERE IP= ? AND Port= ? ");
-						$sth->execute($poolsd, $ip, $port); $sth->finish();
-					}
-				}  	
-		  	if ($now > $ttu || $devs eq "None") {
+					my $poolsd = $1 if ($npools =~ m/STATUS=S,.+?\|(.+)/g);
+					$poolsd =~ s/\|/\n/g;
 					my $ndevs = &sendAPIcommand("devs","",$ip,$port);
-					if ($ndevs =~ m/STATUS=S,.+?\|(.+)/g) {
-						my $devsd = $1;
-						$devsd =~ s/\|/\n/g;
-						$sth = $dbh->prepare("UPDATE Miners SET Devices= ? WHERE IP= ? AND Port= ? ");
-						$sth->execute($devsd, $ip, $port); $sth->finish();
-					}			
-				}  			
-				if ($now > $ttu) {
-					$sth = $dbh->prepare("UPDATE Miners SET Updated= ? WHERE IP= ? AND Port= ? ");
-					$sth->execute($now, $ip, $port); $sth->finish();
-				}
-			} else {
-				if (!defined $acheck || $acheck eq "") {
+					my $devsd = $1 if ($ndevs =~ m/STATUS=S,.+?\|(.+)/g);
+					$devsd =~ s/\|/\n/g;
+					$sth = $cdbh->prepare("UPDATE Miners SET Access= ?, Version= ?, Summary= ?, Pools= ?, Devices= ?, Updated= ? WHERE IP= ? AND Port= ? ");
+					$sth->execute($acheck, $nvers, $nsum, $poolsd, $devsd, $now, $ip, $port); $sth->finish();
+		  	}
+			} elsif (!defined $acheck || $acheck eq "") {
 					$acheck = "U";
-					$sth = $dbh->prepare("UPDATE Miners SET Access= ? WHERE IP= ? AND Port= ? ");
+					$sth = $cdbh->prepare("UPDATE Miners SET Access= ? WHERE IP= ? AND Port= ? ");
 					$sth->execute($acheck, $ip, $port); $sth->finish();
-				} elsif ($acheck eq "socket failed") {
+			} elsif ($acheck eq "socket failed") {
 					$acheck = "F";
-					$sth = $dbh->prepare("UPDATE Miners SET Access= ? WHERE IP= ? AND Port= ? ");
+					$sth = $cdbh->prepare("UPDATE Miners SET Access= ? WHERE IP= ? AND Port= ? ");
 					$sth->execute($acheck, $ip, $port); $sth->finish();
-				}
 			}
-			exit;
-		} 
+			$cdbh->disconnect();	
+			exit 0;
+		} 	 
 	} 
-	sleep 15; kill -1, getpgrp($pid); 
 	if ($pid > 0) {
+		waitpid $pid, 0;
 		my $nsth = $dbh->prepare("SELECT Pools, Devices, Updated FROM Miners"); $nsth->execute(); 
 	 	while (my @mprow = $nsth->fetchrow_array()) {
 	 		my $mdevs = $mprow[1]; 
@@ -116,22 +87,21 @@ sub doGetData {
 				} $psth->finish();
 				while ($mdevs =~ m/Last Share Pool=(\d),/g) {
 					if ($mpoid == $1) {
-	 					my $ssth = $dbh->prepare("UPDATE Pools SET LastUsed= ? WHERE URL= ? AND Worker= ?");
-						$ssth->execute($now, $mpurl, $mpuser); $ssth->finish();
+	 					my $plsth = $dbh->prepare("UPDATE Pools SET LastUsed= ? WHERE URL= ? AND Worker= ?");
+						$plsth->execute($now, $mpurl, $mpuser); $plsth->finish();
 					}
 				} 
 	  	 	if ($ucount == 0 ) {
-	  	 		print " inserting $mpurl\n";
 		      	$dbh->do("INSERT INTO Pools(URL, Worker, Pass, Updated, Status, Pri, Diff, Rej, Alias, LastUsed) VALUES	('NEWPOOL', '', '', '0', 'unknown', '0', '0', '0', '', '0')");
 		  	    $upsth = $dbh->prepare("UPDATE Pools SET URL= ?, Worker= ?, Updated= ?, Status= ?, Pri= ?, Diff= ?, Rej= ? WHERE URL='NEWPOOL'");
 		    	  $upsth->execute($mpurl, $mpuser, $now, $mpstat, $mppri, $mpdiff, $mprej); $upsth->finish();				 
 	  	 	}
 			}		
 		} $nsth->finish();
-		$sth = $dbh->prepare("SELECT URL, Worker, Updated FROM Pools"); $sth->execute(); 
-	 	while (my @prow = $sth->fetchrow_array()) {
+		my $usth = $dbh->prepare("SELECT URL, Worker, Updated FROM Pools"); $usth->execute(); 
+	 	while (my @prow = $usth->fetchrow_array()) {
 	 		my $purl = $prow[0]; my $puser = $prow[1]; my $pupdated = $prow[2];
-	 		if ($pupdated + 90 < $now) {
+	 		if ($pupdated + 120 < $now) {
 		 		my @ipport = split(/:/, $purl);
 		 		my $phost = $ipport[1]; $phost =~ s|^//||;
 		 		my $pport = $ipport[2];
@@ -146,8 +116,8 @@ sub doGetData {
 		 			$ssth = $dbh->prepare("UPDATE Pools SET Status='Dead' WHERE URL= ? AND Worker= ?");
 					$ssth->execute($purl, $puser); $ssth->finish();
 		 		}
-		 	}
-	  } $sth->finish();
+		 	} 
+	  } $usth->finish();
 	}
 	$dbh->disconnect();	
 }
@@ -178,3 +148,5 @@ sub doPoolCheck {
     }
   }
 }
+
+1;
