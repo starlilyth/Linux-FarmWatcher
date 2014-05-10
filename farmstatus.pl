@@ -2,7 +2,7 @@
 #    This file is part of IFMI FarmManager.
 #
 
-package Linux::FarmWatcher::FarmStatusCGI;
+package farmstatus;
 
 use warnings;
 use strict;
@@ -13,9 +13,9 @@ use Exporter 'import';
 our @EXPORT = qw(generate_html);
 
 sub generate_html {
-	my ($dbname, $shownode, $conf) = @_;
+	my ($dbname, $shownode) = @_;
 
-	my %conf = %$conf;
+	require '/opt/ifmi/fm-common.pl';
 	my $now = time;
 	my $dbh;
 	my $tothash = 0; my $thrh; my $totproblems = 0;
@@ -25,6 +25,7 @@ sub generate_html {
 	my $problemgpus = 0; my $okgpus = 0;
 	my $problemnodes = 0; my $oknodes = 0;
 	my $problempools = 0; my $okpools = 0;
+	my $PLACEHOLDER = 1;
 	my $html = "<div id='farm' class='content'>"; my $head;
 	my $ndhtml = "<div id='node' class='content'>";
 
@@ -181,7 +182,7 @@ sub generate_html {
 								my $dhash = $1 * 1000 if ($devdata =~ m/MHS\s\d+s=(\d+\.\d+),/); 					
 								$dhash = sprintf("%.0f", $dhash); 
 								$tothash += $dhash; $lochash += $dhash;	
-								if ($dhash < $conf{monitoring}{monitor_hash_lo}) {
+								if ($dhash < $PLACEHOLDER) {
 									$dproblem[$devid]++; $problems++;
 									push(@nodemsg, "Device $devid is below minimum hash rate");
 									$dhash = "<div class='error'>" . $dhash . '</div>';
@@ -194,12 +195,12 @@ sub generate_html {
 								my $dtemp = $1 if ($devdata =~ m/Temperature=(\d+.\d+),/);
 								my $dtemph; 
 								if ($dtemp > 0) {
-							 		if ($dtemp > $conf{monitoring}{monitor_temp_hi}) {
+							 		if ($dtemp > $PLACEHOLDER +1000) {
 				 			 			$dproblem[$devid]++; 
 				 			 			$problems++;
 								 		push(@nodemsg, "Device $devid is over maximum temp");						
 								 		$dtemph = "<div class='error'>" . sprintf("%.0f", $dtemp) . 'C</div>';
-								 	} elsif ($dtemp < $conf{monitoring}{monitor_temp_lo}) {
+								 	} elsif ($dtemp < $PLACEHOLDER) {
 								 		$dproblem[$devid]++; 
 								 		$problems++;
 								 		push(@nodemsg, "Device $devid is below minimum temp");	
@@ -213,7 +214,7 @@ sub generate_html {
 								if ($devtype eq "GPU") {
 									$dfans = $1 if ($devdata =~ m/Fan Speed=(\d+),/); 					
 									$dfanp = $1 if ($devdata =~ m/Fan Percent=(\d+),/);
-									if (($dfans < $conf{monitoring}{monitor_fan_lo}) && (! $dfans eq '0')) {
+									if (($dfans < $PLACEHOLDER) && (! $dfans eq '0')) {
 										$dproblem[$devid]++;
 										$problems++;
 										push(@nodemsg, "GPU $devid is below minimum fan rpm");
@@ -245,7 +246,7 @@ sub generate_html {
 							while ($devices =~ m/\b(GPU|ASC|PGA)\b=(\d).+,MHS\s\d+s=(\d+\.\d+),/g) {
 								$devtype = $1; $devtype = "ASIC" if ($devtype eq "ASC"||$devtype eq "PGA");
 								my $devid = $2; my $dhash = $3 * 1000; $dhash = sprintf("%.0f", $dhash); 
-								if ($dhash < $conf{monitoring}{monitor_hash_lo}) {
+								if ($dhash < $PLACEHOLDER) {
 									$dproblem[$devid]++; $problems++;
 									push(@nodemsg, "Device $devid is below minimum hash rate");
 									$ddata .= "<td class='error'>" . $dhash . '</TD>';
@@ -258,12 +259,12 @@ sub generate_html {
 							while ($devices =~ m/\b(GPU|ASC|PGA)\b=(\d).+,Temperature=(\d+.\d+),/g) {
 								my $devid = $2; my $dtemp = $3; 
 								if ($dtemp > 0) {
-							 		if ($dtemp > $conf{monitoring}{monitor_temp_hi}) {
+							 		if ($dtemp > $PLACEHOLDER +1000) {
 				 			 			$dproblem[$devid]++; 
 				 			 			$problems++;
 								 		push(@nodemsg, "Device $devid is over maximum temp");						
 								 		$ddata .= "<td class='error'>";
-								 	} elsif ($dtemp < $conf{monitoring}{monitor_temp_lo}) {
+								 	} elsif ($dtemp < $PLACEHOLDER) {
 								 		$dproblem[$devid]++; 
 								 		$problems++;
 								 		push(@nodemsg, "Device $devid is below minimum temp");	
@@ -277,7 +278,7 @@ sub generate_html {
 							}
 							while ($devices =~ m/GPU=(\d).+,Fan\sSpeed=(\d+),/g) {
 								my $devid = $1; my $gfans = $2; 
-								if (($gfans < $conf{monitoring}{monitor_fan_lo}) && (! $gfans eq '0')) {
+								if (($gfans < $PLACEHOLDER) && (! $gfans eq '0')) {
 									$dproblem[$devid]++;
 									$problems++;
 									push(@nodemsg, "GPU $devid is below minimum fan rpm");
@@ -533,11 +534,8 @@ sub generate_html {
 }
 
 sub run_farmstatus_as_cgi {
+	use CGI; 
 	my $dbname = "/opt/ifmi/fm.db";
-	require '/opt/ifmi/fm-common.pl';
-	my $conf = &getConfig;
-	my %conf = %{$conf};
-	my $conffile = "/opt/ifmi/farmmanager.conf";
 	
 	# Now carry on
 	my $shownode = -1;
@@ -552,7 +550,7 @@ sub run_farmstatus_as_cgi {
 	}
 	
 	# Put it all together
-	my ($thrh, $head, $html) = generate_html($dbname, $shownode, \%conf);
+	my ($thrh, $head, $html) = generate_html($dbname, $shownode);
 	
 	print $q->header;
 	if ($url =~ m/\?.+/) {
