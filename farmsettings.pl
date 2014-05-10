@@ -109,7 +109,7 @@ if (-e $dbname) {
 	$sth = $dbh->prepare("SELECT COUNT() FROM Miners"); $sth->execute();
   my $ncount = $sth->fetchrow_arrayref->[0]; $sth->finish;
 	$nodeh .= "<div class='table'>";
-	$nodeh .= "<div class='title'><p>$ncount Nodes</p></div>";
+	$nodeh .= "<div class='title'>$ncount Nodes</div><br>";
 	$nodeh .= "<div class='row'>";
 	$nodeh .= "<form name='nadd' method='POST'><b>Add Node</b> ";
 	$nodeh .= "<input type='text' placeholder='IP' size='18' placeholder='192.168.0.100' name='nnip' required> ";
@@ -136,42 +136,42 @@ if (-e $dbname) {
   $nodeh .= "</div><br>";
 
 	$nodeh .= "<div class='row'>";
-  $nodeh .= "<div class='heading'>";
-  $nodeh .= "<div class='cell'><p>IP</p></div>";
-  $nodeh .= "<div class='cell'><p>Port</p></div>";
-  $nodeh .= "<div class='cell'><p>Hostname</p></div>";
-  $nodeh .= "<div class='cell'><p>Farm Group</p></div>";
-  $nodeh .= "<div class='cell'><p>Last Update</p></div>";
-  $nodeh .= "<div class='cell'><p>Status</p></div>";
-  $nodeh .= "<div class='cell'><p>Version</p></div>";
-  $nodeh .= "<div class='cell'><p>Active Pool</p></div>";
-  $nodeh .= "<div class='cell'><p>Mon. Profile</p></div>";  
-  $nodeh .= "<div class='cell'><p>Remove</p></div>";
+  $nodeh .= "<div class='header'>";
+  $nodeh .= "<div class='cell'>IP</div>";
+  $nodeh .= "<div class='cell'>Port</div>";
+  $nodeh .= "<div class='cell'>Hostname</div>";
+  $nodeh .= "<div class='cell'>Farm Group</div>";
+  $nodeh .= "<div class='cell'>Last Update</div>";
+  $nodeh .= "<div class='cell'>Status</div>";
+  $nodeh .= "<div class='cell'>Version</div>";
+  $nodeh .= "<div class='cell'>Active Pool</div>";
+  $nodeh .= "<div class='cell'>Mon. Profile</div>";  
+  $nodeh .= "<div class='cell'>Remove</div>";
 	$nodeh .= "</div>";
 	$sth = $dbh->prepare("SELECT * FROM Miners"); $sth->execute(); 
 	my $mall = $sth->fetchall_arrayref(); $sth->finish();	
 	foreach my $mrow (sort { $a->[0] cmp $b->[0] } @$mall) {
  		my ($mip, $mport, $mhost, $muser, $mpass, $mfg, $mupdated, $mdevs, $mpools, $msum, $vers, $macc) = @$mrow;
 		$nodeh .= "<div class='row'>"; 
-    $nodeh .= "<div class='cell'><p><A href=ssh://root@" . $mip . '>' . $mip . '</a></p></div>';
-    $nodeh .= "<div class='cell'><p>$mport</p></div>";
-    $nodeh .= "<div class='cell'><p><A href=https://$mip/index.html>$mhost</a></p></div>";
-    $nodeh .= "<div class='cell'><p>$mfg</p></div>";
+    $nodeh .= "<div class='cell'><A href=ssh://root@" . $mip . '>' . $mip . '</a></div>';
+    $nodeh .= "<div class='cell'>$mport</div>";
+    $nodeh .= "<div class='cell'><A href=https://$mip/index.html>$mhost</a></div>";
+    $nodeh .= "<div class='cell'>$mfg</div>";
  		if ($mupdated != 0) {
  			if ($now > $mupdated+65) {
  				$mupdated = POSIX::strftime("%m-%d %H:%M", localtime($mupdated));
-    		$mupdated = "<p class='warn'>$mupdated</p>";
+    		$mupdated = "<div class='warn'>$mupdated";
  			} else {
  				$mupdated = POSIX::strftime("%m-%d %H:%M", localtime($mupdated));
-  	  	$mupdated = "<p class='ok'>$mupdated</p>";
+  	  	$mupdated = "<div class='ok'>$mupdated";
     	}
-    } else { $mupdated = "<p class='warn'>never</p>"; }
-    $nodeh .= "<div class='cell'>$mupdated</div>";
-    $macc = "<p class='ok'>R W</p>" if ($macc eq "S");
-    $macc = "<p class='warn'>R O</p>" if ($macc eq "E");
-    $macc = "<p class='warn'>U<small>navailable</small></p>" if ($macc eq "U");
-    $macc = "<p class='error'>F<small>ailed<br>connection</small></p>" if ($macc eq "F");
-    $nodeh .= "<div class='cell'>$macc</div>";
+    } else { $mupdated = "<div class='warn'>never"; }
+    $nodeh .= "<div class='cell'>$mupdated</div></div>";
+    $macc = "<div class='ok'>R W" if ($macc eq "S");
+    $macc = "<div class='warn'>R O" if ($macc eq "E");
+    $macc = "<div class='warn'>U<small>navailable</small>" if ($macc eq "U");
+    $macc = "<div class='error'>F<small>ailed<br>connection</small>" if ($macc eq "F");
+    $nodeh .= "<div class='cell'>$macc</div></div>";
 
 		my $mname = ""; my $mvers = "";
 		if ($vers =~ m/Miner=(\w+)?\s?(\d+\.\d+\.\d+),API/) {
@@ -180,7 +180,7 @@ if (-e $dbname) {
 		} else {
 			$mname = "unknown";
 		}				
-    $nodeh .= "<div class='cell'><p>$mname $mvers</p></div>";
+    $nodeh .= "<div class='cell'>$mname $mvers</div>";
     $nodeh .= "<div class='cell'>";
 		my $mplm=0; my $mpname; 
 		if ($mpools =~ m/^POOL=/) {
@@ -195,7 +195,7 @@ if (-e $dbname) {
 			}
 		}		
 		$mpname = "N/A" if (!defined $mpname); 
-  	$nodeh .= "<p>" . $mpname . "</p>";
+  	$nodeh .= "" . $mpname . "";
     $nodeh .= "</div>";
     $nodeh .= "<div class='cell'>";
     $nodeh .= "<form name='monpro' method='POST'><input type='hidden' name='' value='$'>";
@@ -212,7 +212,7 @@ if (-e $dbname) {
 	$phtml .= "<div id='poollist' class='form'>";
 	$sth = $dbh->prepare("SELECT COUNT() FROM Pools"); $sth->execute();
   my $pcount = $sth->fetchrow_arrayref->[0]; $sth->finish;
-	$phtml .= "<div class='table'><div class='title'><p>$pcount Pools</p></div>";
+	$phtml .= "<div class='table'><div class='title'>$pcount Pools</div><br>";
 	$phtml .= "<div class='row'>";
 	$phtml .= "<form name='padd' method='POST'><b>Add Pool</b> ";
 	$phtml .= "<input type='text' size='45' placeholder='MiningURL:portnumber' name='npoolurl' required> ";
@@ -244,15 +244,15 @@ if (-e $dbname) {
   $phtml .= "</div><br>";
 
 	$phtml .= "<div class='row'>";
-  $phtml .= "<div class='heading'>";
-  $phtml .= "<div class='cell'><p>URL</p></div>";
-  $phtml .= "<div class='cell'><p>Worker</p></div>";
-  $phtml .= "<div class='cell'><p>Password</p></div>";
-  $phtml .= "<div class='cell'><p>Alias</p></div>";
-  $phtml .= "<div class='cell'><p>Status</p></div>";
-  $phtml .= "<div class='cell'><p>Notify</p></div>";
-  $phtml .= "<div class='cell'><p>Last Used</p></div>";
-#  $phtml .= "<div class='cell'><p> </p></div>";
+  $phtml .= "<div class='header'>";
+  $phtml .= "<div class='cell'>URL</div>";
+  $phtml .= "<div class='cell'>Worker</div>";
+  $phtml .= "<div class='cell'>Password</div>";
+  $phtml .= "<div class='cell'>Alias</div>";
+  $phtml .= "<div class='cell'>Status</div>";
+  $phtml .= "<div class='cell'>Notify</div>";
+  $phtml .= "<div class='cell'>Last Used</div>";
+#  $phtml .= "<div class='cell'> </div>";
 	$phtml .= "</div>";
 	$sth = $dbh->prepare("SELECT * FROM Pools"); $sth->execute(); 
 	my $pall = $sth->fetchall_arrayref(); $sth->finish();	
@@ -263,19 +263,19 @@ if (-e $dbname) {
 	    $pusr = substr($pusr, 0, 6) . " ... " . substr($pusr, -6, 6) if (index($pusr, '.') < 0);
 	  }
 		$phtml .= "<div class='row'>"; 
-    $phtml .= "<div class='cell'><p>$purl</p></div>";
-    $phtml .= "<div class='cell'><p>$pusr</p></div>";
+    $phtml .= "<div class='cell'>$purl</div>";
+    $phtml .= "<div class='cell'>$pusr</div>";
     $ppass = "(none)" if ($ppass eq "");
-    $phtml .= "<div class='cell'><p>$ppass</p></div>";
-    $phtml .= "<div class='cell'><p>$palias</p></div>";
+    $phtml .= "<div class='cell'>$ppass</div>";
+    $phtml .= "<div class='cell'>$palias</div>";
     if ($pstatus eq "unknown") {
-	    $pstatus = "<p class='warn'>$pstatus</p>";
+	    $pstatus = "<div class='warn'>$pstatus";
 	  } elsif ($pstatus eq "Dead") {
-	    $pstatus = "<p class='error'>$pstatus</p>";
+	    $pstatus = "<div class='error'>$pstatus";
 	  } else {
-	    $pstatus = "<p class='ok'>$pstatus</p>";
+	    $pstatus = "<div class='ok'>$pstatus";
 		}  
-    $phtml .= "<div class='cell'>$pstatus</div>";
+    $phtml .= "<div class='cell'>$pstatus</div></div>";
   	$phtml .= "<div class='cell'>";
 		$phtml .= "<form name='pooln' method='POST'>";
 		$phtml .= "<input type=hidden name='purln' value=$purl>";
@@ -291,7 +291,7 @@ if (-e $dbname) {
 	  } else { 
  	  	$phtml .= "<input type='checkbox' name='plnotify'>Live ";
 	  }
-	  $phtml .= "<br><input type='submit' value='Save'></form>";    
+	  $phtml .= "<input type='submit' value='Save'></form>";    
     $phtml .= "</div>";
 		if ($plast != 0) {
  			if ($plast +90 > $now) {
@@ -306,7 +306,7 @@ if (-e $dbname) {
     	$phtml .= "<input type='hidden' name='delpool' value='$purl'><input type='submit' value='Remove'>";
 	  	$phtml .= "</form></div>";
  	  } else {
-	    $phtml .= "<div class='cell'><p>$plast</p></div>";
+	    $phtml .= "<div class='cell'>$plast</div>";
 	  }
 
     $phtml .= "</div>";
@@ -314,7 +314,7 @@ if (-e $dbname) {
 	$phtml .= "</div>";
 	$dbh->disconnect();
 } else { 
-	$html .= "<div id='waiting'><h1>Miner database not available!</H1><P>&nbsp;<P></div>";
+	$html .= "<div id='waiting'><h1>Miner database not available!</H1>&nbsp;</div>";
 }	
 
 print $html;

@@ -11,6 +11,7 @@ body {
   	background-color: #FFFFFF;
   	color: #000000;
   	font-family: "Trebuchet MS", Helvetica, sans-serif;
+    font-size: 13px;
   	border: 0px;
   	margin: 0px;
   	padding: 0px;
@@ -41,6 +42,7 @@ a {
 .odata {
   float: left;
   padding: 10px;
+  font-size: 16px;
 }
 #overviewhash {
   font-size: 30px;
@@ -88,7 +90,7 @@ a {
 .table {
   display: table;
   border-collapse: collapse;
-  margin: 12px;
+  margin: 6px;
 }
 .title {
   display: table-caption;
@@ -96,10 +98,12 @@ a {
   font-weight: bold;
   font-size: larger;
 }
-.heading {
-  display: table-row;
+.header {
+  display: table-header-group;
   font-weight: bold;
   text-align: center;
+  font-size: 12px;
+  background-color: #C6E2FF;
 }
 .row {
   display: table-row;
@@ -109,8 +113,7 @@ a {
   border: solid #ccc;
   border-width: thin;
   text-align: center;
-  padding-left: 5px;
-  padding-right: 5px;
+  padding: 2px 5px;
 }
 
 /* FORMS */
@@ -120,20 +123,10 @@ form{
 .form {
 #  float: left;
   border: 2px solid #ccc;
-  background: #CCFFFF;
-  padding: 10px;
-  text-align: left;
-  margin-right:auto;
-  font-size: 14px;
-}
-#poollist.form{
-  font-size: 13px;
+  background: #E5FFFF;
   display: inline-block;
 }
-#nodelist.form{
-  font-size: 13px;
-  display: inline-block;
-}
+
 button, input, select, textarea {
   font-family : inherit;
   font-size   : 100%;
@@ -146,25 +139,16 @@ input:focus {
 /* Special Defs */
 #locsum {
     border: 2px solid #ccc;
-    padding: 5px;
-    background-color: #00ffFF;
+    padding: 2px;
+    background-color: #66CCFF;
     font-size: 16px;
     font-weight: bold;
     text-align: left;
-    width: 80%;
+    width: 95%;
 }
-#pooltable {
-    border: 0px none;
-    padding: 8px;
-    font-size: 13px;
-    text-align: left;
-    padding-left: 8px;
-    padding-right: 8px;
-}
-#pthdr {
-    font-size: 12px;
-    background-color: #C6E2FF;
-    font-weight: bold;
+
+#nodefail {
+  font-size: 16px;
 }
 
 #waiting {
@@ -181,10 +165,9 @@ input:focus {
     border: 0 none;
     border-collapse:collapse;
     font-size: 12px;
-    margin: 12px;
+    margin: 6px;
 }
 #farm td {
-  padding: 3px;
   padding-left: 8px;
   padding-right: 8px;
   border: 1px solid #cccccc;
@@ -195,8 +178,8 @@ input:focus {
 }
 #farm .ndatahdr {
     background-color: #E0FFFF;
-    font-size: 13px;
     font-weight: bold;
+    min-width: 100px;
 }
 
 
