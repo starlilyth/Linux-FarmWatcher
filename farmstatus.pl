@@ -2,11 +2,15 @@
 #    This file is part of IFMI FarmManager.
 #
 
+package Linux::FarmWatcher::FarmStatusCGI;
+
 use warnings;
 use strict;
-use CGI qw(:cgi-lib :standard);
 use DBI;
 use POSIX;
+use Exporter 'import';
+
+our @EXPORT = qw(generate_html);
 
 sub generate_html {
 	my ($dbname, $shownode, $conf) = @_;
@@ -528,43 +532,45 @@ sub generate_html {
 	return ($thrh, $head, $shownode > -1 ? $ndhtml : $html);
 }
 
-my $dbname = "/opt/ifmi/fm.db";
-require '/opt/ifmi/fm-common.pl';
-my $conf = &getConfig;
-my %conf = %{$conf};
-my $conffile = "/opt/ifmi/farmmanager.conf";
-
-# Now carry on
-my $shownode = -1;
-my $fm_name = `hostname`; chomp $fm_name;
-my $q=CGI->new();
-if (defined($q->param('node'))) {
-	$shownode = $q->param('node');
+sub run_farmstatus_as_cgi {
+	my $dbname = "/opt/ifmi/fm.db";
+	require '/opt/ifmi/fm-common.pl';
+	my $conf = &getConfig;
+	my %conf = %{$conf};
+	my $conffile = "/opt/ifmi/farmmanager.conf";
+	
+	# Now carry on
+	my $shownode = -1;
+	my $fm_name = `hostname`; chomp $fm_name;
+	my $q=CGI->new();
+	if (defined($q->param('node'))) {
+		$shownode = $q->param('node');
+	}
+	my $url = "?";
+	if ($shownode > -1) {
+		$url .= "node=$shownode\&";
+	}
+	
+	# Put it all together
+	my ($thrh, $head, $html) = generate_html($dbname, $shownode, \%conf);
+	
+	print $q->header;
+	if ($url =~ m/\?.+/) {
+		print $q->start_html( -title=>$fm_name . ' - ' . $thrh  . ' Mh/s', 
+			-style=>{-src=>'/IFMI/fmdefault.css'},  
+			-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30'})  
+		);
+	} else { 
+		$url .= "overview";
+		print $q->start_html( -title=>$fm_name . ' - ' . $thrh  . ' Mh/s', 
+			-style=>{-src=>'/IFMI/fmdefault.css'},  
+			-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30; url=' . $url })  
+		);
+	}
+	print "<div id='wrap'>";
+	print $head;
+	print $html;
+	print "</div></BODY></HTML>";
 }
-my $url = "?";
-if ($shownode > -1) {
-	$url .= "node=$shownode\&";
-}
 
-# Put it all together
-my ($thrh, $head, $html) = generate_html($dbname, $shownode, \%conf);
-
-print header;
-if ($url =~ m/\?.+/) {
-	print start_html( -title=>$fm_name . ' - ' . $thrh  . ' Mh/s', 
-		-style=>{-src=>'/IFMI/fmdefault.css'},  
-		-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30'})  
-	);
-} else { 
-	$url .= "overview";
-	print start_html( -title=>$fm_name . ' - ' . $thrh  . ' Mh/s', 
-		-style=>{-src=>'/IFMI/fmdefault.css'},  
-		-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30; url=' . $url })  
-	);
-}
-print "<div id='wrap'>";
-print $head;
-print $html;
-print "</div></BODY></HTML>";
-
-1;
+run_farmstatus_as_cgi() unless caller;
