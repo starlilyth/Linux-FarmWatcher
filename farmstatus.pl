@@ -8,11 +8,11 @@ use warnings;
 use strict;
 use DBI;
 use POSIX;
-use Exporter 'import';
+use base qw(Exporter);
 
-our @EXPORT = qw(generate_html);
+our @EXPORT = qw(make_farm_html);
 
-sub generate_html {
+sub make_farm_html {
 	my ($dbname, $shownode) = @_;
 
 	require '/opt/ifmi/fm-common.pl';
@@ -89,7 +89,7 @@ sub generate_html {
 						} else {
 							$ndata .= "<td class='warn' colspan=3>$nodemsg[0]</td>";
 						}
-				    my $ach; 
+				    my $ach = "U"; 
 				    $ach = "Miner Unavailable" if ($acheck eq "U");
 				    $ach = "Connection Failed" if ($acheck eq "F");
 				    $nodemsg[@nodemsg-1] .= " - " . $ach;
@@ -313,13 +313,14 @@ sub generate_html {
 		 			$ddata .= "</tr>";
 		 		}
 				if ($npage == $shownode) {
-					$ndhead .= '<div class="row" id="olink"><a href="/cgi-bin/farmstatus.pl">Back to Overview</a></div><br>';
+					$ndhead .= '<div class="row" id="olink"><a href="testfarm">Back to Overview</a></div><br>';
 					$ndhead .= "<div id='locsum'> $name ($ip / $port) - $mmhs Mh/s with $dcount Device";
 					$ndhead .= "s" if ($dcount != 1);
 					$ndhead .= "</div>";
 					if ($dcount > 0) {
 						$ndhead .= "<div class='table' id='nodedetail'>";
 						$ndhead .= "<div class='header'>";
+						$ndhead .= "<div class='row'>";
 						$ndhead .= "<div class='cell'>Farm Group</div>";
 						$ndhead .= "<div class='cell'>Miner</div>";
 						$ndhead .= "<div class='cell'>Status</div>";
@@ -327,10 +328,11 @@ sub generate_html {
 						$ndhead .= "<div class='cell'>Active Pool</div>";
 						$ndhead .= "<div class='cell'>WU</div>";
 						$ndhead .= "<div class='cell'>Rej %</div>";
-						$ndhead .= "</div>";			
+						$ndhead .= "</div></div>";			
 	
 						$nddhead .= "<div class='table' id='devdetail'>";
 						$nddhead .= "<div class='header'>";
+						$nddhead .= "<div class='row'>";
 						$nddhead .= "<div class='cell'>$devtype</div>";
 						$nddhead .= "<div class='cell'>Status</div>";
 						$nddhead .= "<div class='cell'>Hashate</div>";
@@ -345,7 +347,7 @@ sub generate_html {
 							$nddhead .= "<div class='cell'>Memory</div>";
 							$nddhead .= "<div class='cell'>Power</div>";
 						}
-						$nddhead .= "</div>";
+						$nddhead .= "</div></div>";
 					}			
 				} else {
 		 			$nhead .= "<TR class='nodehdr'>";
@@ -411,13 +413,14 @@ sub generate_html {
 	
 		$phtml = "<div class='table' id='pooltable'>";
 		$phtml .= "<div class='header' id='pthdr'>";
+	  $phtml .= "<div class='row'>";
 	  $phtml .= "<div class='cell'>URL</div>";
 	  $phtml .= "<div class='cell'>Worker</div>";
 	  $phtml .= "<div class='cell'>Difficulty</div>";
 	  $phtml .= "<div class='cell'>Reject %</div>";
 	  $phtml .= "<div class='cell'>Node Pri</div>";
 	  $phtml .= "<div class='cell'>Alias</div>";
-		$phtml .= "</div>";
+		$phtml .= "</div></div>";
 		
 		$sth = $dbh->prepare("SELECT * FROM Pools"); $sth->execute(); 
 		my $pall = $sth->fetchall_arrayref(); $sth->finish();	
@@ -450,7 +453,7 @@ sub generate_html {
 		# Overview
 	
 		$head = "<div id='overview'>";	
-			$head .= "<div id='logo' class='odata'><IMG src='/IFMI/IFMI-FM-logo.png'></div>" ;	
+			$head .= "<div id='logo' class='odata'><IMG src='images/IFMI-FM-logo.png'></div>" ;	
 		
 			$head .= "<div id='overviewhash' class='odata'>";
 			$thrh = sprintf("%.2f", $tothash / 1000 );
@@ -523,7 +526,7 @@ sub generate_html {
 			$head .= "<br>$pcount active pool account";
 			$head .= 's' if ($pcount != 1);
 			$head .= "</div>";
-			$head .= "<div id='icon' class='odata'><a href='farmsettings.pl'><img src='/IFMI/gear.png'></a></div>";
+			$head .= "<div id='icon' class='odata'><a href='farmsettings.pl'><img src='images/gear.png'></a></div>";
 			$head .= "<div id='overviewend' class='odata'><br></div>";
 		$head .= "</div>";
 		$dbh->disconnect();
@@ -550,7 +553,7 @@ sub run_farmstatus_as_cgi {
 	}
 	
 	# Put it all together
-	my ($thrh, $head, $html) = generate_html($dbname, $shownode);
+	my ($thrh, $head, $html) = make_farm_html($dbname, $shownode);
 	
 	print $q->header;
 	if ($url =~ m/\?.+/) {
@@ -572,3 +575,5 @@ sub run_farmstatus_as_cgi {
 }
 
 run_farmstatus_as_cgi() unless caller;
+
+1; 
