@@ -15,7 +15,9 @@ our @EXPORT = qw(make_settings_html);
 
 sub make_settings_html {
 	my ($dbname, $in) = @_;
-	&ReadParse(our %in);
+	my %in = %{$in};	
+  print 'DEBUG - in = ' . $in;
+  #&ReadParse(our %in);
 	require '/opt/ifmi/fm-common.pl';
 
 	my $apooln = $in{'npoolurl'};
@@ -74,7 +76,6 @@ sub make_settings_html {
 	if (defined $npn) {
 		my $paurl = $in{'purln'};
 		my $acount = 0;
-
 		$npn = "";
 	}
 	my $dbh; my $nodeh; my $phtml; my $head; my $html;
@@ -332,7 +333,8 @@ sub run_farmsettings_as_cgi {
 	print start_html( -title=>$fm_name . ' - FM Settings', 
 										-style=>{-src=>'/IFMI/fmdefault.css'},  		
 										-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30'}));
-	my ($html, $nodeh, $phtml) = make_settings_html($dbname, $in);
+	ReadParse(my %in);
+	my ($html, $nodeh, $phtml) = make_settings_html($dbname, \%in);
 	print $html;
 	print $nodeh;
 	print $phtml;
