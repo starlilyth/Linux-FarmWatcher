@@ -10,26 +10,26 @@ $SIG{CHLD} = 'IGNORE';
 require '/opt/ifmi/fm-common.pl';
 
 sub doGetData {
-	my $dbname = "/opt/ifmi/fm.db"; my $dbh; 
+	my $dbname; my $dbh;
+	if (defined $_[0]) { $dbname = "/opt/minerfarm/$_[0]/fm.db"; } else { $dbname = "/opt/ifmi/fm.db"; }  
 	my $now = time;
 	if (! -e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
 		$dbh->do("CREATE TABLE Miners(IP TEXT, Port INTEGER, Name TEXT, User TEXT, Pass TEXT, Mgroup TEXT, Updated INT, Devices TEXT, Pools TEXT, Summary TEXT, Version TEXT, Access TEXT)");
-		$dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access) VALUES ('192.168.0.1', '4028', 'unknown', '', '', 'Default', '0', 'None', 'None', 'None', 'None', 'E')");
+#		$dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access) VALUES ('192.168.0.1', '4028', 'unknown', '', '', 'Default', '0', 'None', 'None', 'None', 'None', 'E')");
 		$dbh->do("CREATE TABLE Pools(URL TEXT, Worker TEXT, Pass TEXT, Updated INT, Status TEXT, Pri INT, Diff INT, Rej INT, Alias TEXT, LastUsed INT)");
 		$dbh->do("INSERT INTO Pools(URL, Worker, Pass, Updated, Status, Pri, Diff, Rej, Alias, LastUsed) VALUES ('NEWPOOL', '1JBovQ1D3P4YdBntbmsu6F1CuZJGw9gnV6', '', '$now', 'unknown', '0', '0', '0', 'DONATE', '0')");
 		my $dsth = $dbh->prepare("UPDATE Pools SET URL= ? WHERE URL='NEWPOOL'");
 		my $donatepool = "stratum+tcp://mine.coinshift.com:3333";
-		$dsth->execute($donatepool); $dsth->finish();
+		$dsth->execute($donatepool); $dsth->finish(); $dbh->disconnect();	
 		my $apacheuser = "unknown";
 		$apacheuser = "apache" if (-e "/etc/redhat-release");
 		$apacheuser = "www-data" if (-e "/etc/debian_version"); 
 		`chown $apacheuser $dbname` if ($apacheuser ne "unknown");
-	} else { 
-		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
 	}
 
 	my $pid; 
+	$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
 	my $all = $dbh->selectall_arrayref("SELECT IP, Port, Updated FROM Miners");
 	foreach my $row (@$all) {
 	  my ($ip, $port, $updated) = @$row;
@@ -63,44 +63,45 @@ sub doGetData {
 					$sth = $cdbh->prepare("UPDATE Miners SET Access= ? WHERE IP= ? AND Port= ? ");
 					$sth->execute($acheck, $ip, $port); $sth->finish();
 			}
-			$cdbh->disconnect();	
+			$cdbh->disconnect();
 			exit 0;
 		} 	 
-	} 
-	if ($pid > 0) {
+	} $dbh->disconnect();
+
+#	sleep 10;
+	if (defined $pid && $pid > 0) {
 		waitpid $pid, 0;
-		my $nsth = $dbh->prepare("SELECT Pools, Devices, Updated FROM Miners"); $nsth->execute(); 
-	 	while (my @mprow = $nsth->fetchrow_array()) {
-	 		my $mdevs = $mprow[1]; 
-	 		my $mupdated = $mprow[2];
+		my $pdbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
+		my $mpall = $pdbh->selectall_arrayref("SELECT Pools, Devices FROM Miners");	
+		foreach my $mprow (@$mpall) {
+			my ($mpools, $mdevs) = @$mprow;
 			my $mpoid; my $mpurl; my $mpstat; my $mppri; my $mpuser; my $mpdiff; my $mprej;  
-			while ($mprow[0] =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+)\.\d+,.+,Pool Rejected%=(\d+\.\d+),/g) {
+			while ($mpools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+)\.\d+,.+,Pool Rejected%=(\d+\.\d+),/g) {
 				$mpoid = $1; $mpurl = $2; $mpstat = $4; $mppri = $5; $mpuser = $6; $mpdiff = $7; $mprej = $8; 
-			  my $psth = $dbh->prepare("SELECT URL, Worker FROM Pools"); $psth->execute();
 				my $ucount = 0; my $upsth; 
-	    	while (my @uprow = $psth->fetchrow_array()) {
-	       	if ($uprow[0] eq $mpurl && $uprow[1] eq $mpuser) {
-						$upsth = $dbh->prepare("UPDATE Pools SET Updated= ?, Status= ?, Pri= ?, Diff= ?, Rej= ? WHERE URL= ? AND Worker= ?");
-	       		$upsth->execute($now, $mpstat, $mppri, $mpdiff, $mprej, $mpurl, $mpuser); $upsth->finish();
+	    	my $upall = $pdbh->selectall_arrayref("SELECT URL, Worker, LastUsed FROM Pools"); 
+				foreach my $uprow (@$upall) {
+					my ($upurl, $upwkr, $uplast) = @$uprow;
+	       	if ($upurl eq $mpurl && $upwkr eq $mpuser) {
+					  while ($mdevs =~ m/Last Share Pool=(\d),/g) {
+						 	$uplast = $now if ($mpoid == $1);
+					 	}
+						$upsth = $pdbh->prepare("UPDATE Pools SET Updated= ?, Status= ?, Pri= ?, Diff= ?, Rej= ?, LastUsed= ? WHERE URL= ? AND Worker= ?");
+	       		$upsth->execute($now, $mpstat, $mppri, $mpdiff, $mprej, $uplast, $mpurl, $mpuser); $upsth->finish();
 	       		$ucount++
 	       	}
-				} $psth->finish();
-				while ($mdevs =~ m/Last Share Pool=(\d),/g) {
-					if ($mpoid == $1) {
-	 					my $plsth = $dbh->prepare("UPDATE Pools SET LastUsed= ? WHERE URL= ? AND Worker= ?");
-						$plsth->execute($now, $mpurl, $mpuser); $plsth->finish();
-					}
-				} 
+				}
 	  	 	if ($ucount == 0 ) {
-		      	$dbh->do("INSERT INTO Pools(URL, Worker, Pass, Updated, Status, Pri, Diff, Rej, Alias, LastUsed) VALUES	('NEWPOOL', '', '', '0', 'unknown', '0', '0', '0', '', '0')");
-		  	    $upsth = $dbh->prepare("UPDATE Pools SET URL= ?, Worker= ?, Updated= ?, Status= ?, Pri= ?, Diff= ?, Rej= ? WHERE URL='NEWPOOL'");
-		    	  $upsth->execute($mpurl, $mpuser, $now, $mpstat, $mppri, $mpdiff, $mprej); $upsth->finish();				 
-	  	 	}
+		      	$pdbh->do("INSERT INTO Pools(URL, Worker, Pass, Updated, Status, Pri, Diff, Rej, Alias, LastUsed) VALUES	('NEWPOOL', '', '', '0', 'unknown', '0', '0', '0', '', '0')");
+		  	    $upsth = $pdbh->prepare("UPDATE Pools SET URL= ?, Worker= ?, Updated= ?, Status= ?, Pri= ?, Diff= ?, Rej= ?, LastUsed= ? WHERE URL='NEWPOOL'");
+		    	  $upsth->execute($mpurl, $mpuser, $now, $mpstat, $mppri, $mpdiff, $mprej, $now); $upsth->finish();				 
+	  	 	}	  	
 			}		
-		} $nsth->finish();
-		my $usth = $dbh->prepare("SELECT URL, Worker, Updated FROM Pools"); $usth->execute(); 
-	 	while (my @prow = $usth->fetchrow_array()) {
-	 		my $purl = $prow[0]; my $puser = $prow[1]; my $pupdated = $prow[2];
+		}
+		# check status on a pool if its in the table but no longer in a miner
+		my $upothr = $pdbh->selectall_arrayref("SELECT URL, Worker, Updated FROM Pools");
+	 	foreach my $orow (@$upothr) {
+	 		my ($purl, $puser, $pupdated) = @$orow;
 	 		if ($pupdated + 120 < $now) {
 		 		my @ipport = split(/:/, $purl);
 		 		my $phost = $ipport[1]; $phost =~ s|^//||;
@@ -110,17 +111,18 @@ sub doGetData {
 		 		my $pcheck = &doPoolCheck($pip, $pport);
 		 		my $ssth;
 		 		if ($pcheck =~ /"error":(\s)?null/) {
-		 			$ssth = $dbh->prepare("UPDATE Pools SET Status='Alive' WHERE URL= ? AND Worker= ?");
+		 			$ssth = $pdbh->prepare("UPDATE Pools SET Status='Alive' WHERE URL= ? AND Worker= ?");
 					$ssth->execute($purl, $puser); $ssth->finish();
 		 		} elsif ($pcheck =~ /socket failed/) {
-		 			$ssth = $dbh->prepare("UPDATE Pools SET Status='Dead' WHERE URL= ? AND Worker= ?");
+		 			$ssth = $pdbh->prepare("UPDATE Pools SET Status='Dead' WHERE URL= ? AND Worker= ?");
 					$ssth->execute($purl, $puser); $ssth->finish();
 		 		}
 		 	} 
-	  } $usth->finish();
+	  }
+		$pdbh->disconnect();	
 	}
-	$dbh->disconnect();	
 }
+
 
 sub doPoolCheck {
   my $pip = $_[0];
