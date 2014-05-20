@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 #    This file is part of IFMI FarmManager.
 #
-
 use warnings;
 use strict;
 use IO::Socket::INET;
@@ -68,35 +67,36 @@ sub doGetData {
 		} 	 
 	} $dbh->disconnect();
 
-#	sleep 10;
 	if (defined $pid && $pid > 0) {
 		waitpid $pid, 0;
 		my $pdbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
-		my $mpall = $pdbh->selectall_arrayref("SELECT Pools, Devices FROM Miners");	
+		my $mpall = $pdbh->selectall_arrayref("SELECT Pools, Devices, Updated FROM Miners");	
 		foreach my $mprow (@$mpall) {
-			my ($mpools, $mdevs) = @$mprow;
-			my $mpoid; my $mpurl; my $mpstat; my $mppri; my $mpuser; my $mpdiff; my $mprej;  
-			while ($mpools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+)\.\d+,.+,Pool Rejected%=(\d+\.\d+),/g) {
-				$mpoid = $1; $mpurl = $2; $mpstat = $4; $mppri = $5; $mpuser = $6; $mpdiff = $7; $mprej = $8; 
-				my $ucount = 0; my $upsth; 
-	    	my $upall = $pdbh->selectall_arrayref("SELECT URL, Worker, LastUsed FROM Pools"); 
-				foreach my $uprow (@$upall) {
-					my ($upurl, $upwkr, $uplast) = @$uprow;
-	       	if ($upurl eq $mpurl && $upwkr eq $mpuser) {
-					  while ($mdevs =~ m/Last Share Pool=(\d),/g) {
-						 	$uplast = $now if ($mpoid == $1);
-					 	}
-						$upsth = $pdbh->prepare("UPDATE Pools SET Updated= ?, Status= ?, Pri= ?, Diff= ?, Rej= ?, LastUsed= ? WHERE URL= ? AND Worker= ?");
-	       		$upsth->execute($now, $mpstat, $mppri, $mpdiff, $mprej, $uplast, $mpurl, $mpuser); $upsth->finish();
-	       		$ucount++
-	       	}
-				}
-	  	 	if ($ucount == 0 ) {
-		      	$pdbh->do("INSERT INTO Pools(URL, Worker, Pass, Updated, Status, Pri, Diff, Rej, Alias, LastUsed) VALUES	('NEWPOOL', '', '', '0', 'unknown', '0', '0', '0', '', '0')");
-		  	    $upsth = $pdbh->prepare("UPDATE Pools SET URL= ?, Worker= ?, Updated= ?, Status= ?, Pri= ?, Diff= ?, Rej= ?, LastUsed= ? WHERE URL='NEWPOOL'");
-		    	  $upsth->execute($mpurl, $mpuser, $now, $mpstat, $mppri, $mpdiff, $mprej, $now); $upsth->finish();				 
-	  	 	}	  	
-			}		
+			my ($mpools, $mdevs, $mupdated) = @$mprow;
+			if ($mupdated+90 > $now) {
+				my $mpoid; my $mpurl; my $mpstat; my $mppri; my $mpuser; my $mpdiff; my $mprej;  
+				while ($mpools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+)\.\d+,.+,Pool Rejected%=(\d+\.\d+),/g) {
+					$mpoid = $1; $mpurl = $2; $mpstat = $4; $mppri = $5; $mpuser = $6; $mpdiff = $7; $mprej = $8; 
+					my $ucount = 0; my $upsth; 
+		    	my $upall = $pdbh->selectall_arrayref("SELECT URL, Worker, LastUsed FROM Pools"); 
+					foreach my $uprow (@$upall) {
+						my ($upurl, $upwkr, $uplast) = @$uprow;
+		       	if ($upurl eq $mpurl && $upwkr eq $mpuser) {
+						  while ($mdevs =~ m/Last Share Pool=(\d),/g) {
+							 	$uplast = $now if ($mpoid == $1);
+						 	}
+							$upsth = $pdbh->prepare("UPDATE Pools SET Updated= ?, Status= ?, Pri= ?, Diff= ?, Rej= ?, LastUsed= ? WHERE URL= ? AND Worker= ?");
+		       		$upsth->execute($now, $mpstat, $mppri, $mpdiff, $mprej, $uplast, $mpurl, $mpuser); $upsth->finish();
+		       		$ucount++
+		       	}
+					}
+		  	 	if ($ucount == 0 ) {
+			      	$pdbh->do("INSERT INTO Pools(URL, Worker, Pass, Updated, Status, Pri, Diff, Rej, Alias, LastUsed) VALUES	('NEWPOOL', '', '', '0', 'unknown', '0', '0', '0', '', '0')");
+			  	    $upsth = $pdbh->prepare("UPDATE Pools SET URL= ?, Worker= ?, Updated= ?, Status= ?, Pri= ?, Diff= ?, Rej= ?, LastUsed= ? WHERE URL='NEWPOOL'");
+			    	  $upsth->execute($mpurl, $mpuser, $now, $mpstat, $mppri, $mpdiff, $mprej, $now); $upsth->finish();				 
+		  	 	}	  	
+				}		
+			}
 		}
 		# check status on a pool if its in the table but no longer in a miner
 		my $upothr = $pdbh->selectall_arrayref("SELECT URL, Worker, Updated FROM Pools");
@@ -122,7 +122,6 @@ sub doGetData {
 		$pdbh->disconnect();	
 	}
 }
-
 
 sub doPoolCheck {
   my $pip = $_[0];
