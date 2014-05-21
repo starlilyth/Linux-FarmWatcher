@@ -8,8 +8,8 @@ use warnings;
 use strict;
 use DBI;
 use POSIX;
-use base qw(Exporter);
 
+use base qw(Exporter);
 our @EXPORT = qw(make_farm_html);
 
 sub make_farm_html {
@@ -26,13 +26,15 @@ sub make_farm_html {
 	my $problemnodes = 0; my $oknodes = 0;
 	my $problempools = 0; my $okpools = 0;
 	my $PLACEHOLDER = 1;
-	my $html = "<div id='farm' class='content'>"; my $head;
-	my $ndhtml = "<div id='node' class='content'>";
+	my $html = "<div id='farm' class='content'>"; 
+	my $adata = `wget --quiet -O - ads.miner.farm/fm.html`; 
+	$html .= "<div class='cell' id=adblock>$adata</td></div><br>" if ($adata ne "");
+	my $head;	my $ndhtml = "<div id='node' class='content'>";
 
 	if (-e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
 	
-		my $ndhead = ""; my $nddata = ""; my $mmhs = ""; my $nddhead = ""; my $ndddata = "";
+		my $ndhead = ""; my $nddata = ""; my $mmhs = ""; my $nddhead = ""; my $ndddata = ""; my $ndphead = ""; my $ndpdata = "";
 		my @locs; my $lhtml;  my $phtml; 
 		my $sth = $dbh->prepare("SELECT Mgroup FROM Miners");  
 		$sth->execute();
@@ -48,10 +50,8 @@ sub make_farm_html {
 		 	my $locnodes = 0;
 		 	my $npage = 0; 
 			my $nhtml = ""; my $nhead = ""; my $ndata = ""; my $ddata = ""; 
-			my $sth = $dbh->prepare("SELECT * FROM Miners WHERE Mgroup= ?");
-			$sth->execute($loc); 
-			my $all = $sth->fetchall_arrayref(); $sth->finish();
-			foreach my $row (sort { $b <=> $a } @$all) {
+			my $all = $dbh->selectall_arrayref("SELECT * FROM Miners WHERE Mgroup= ?", undef, $loc);
+			foreach my $row (sort { $a->[0] cmp $b->[0] || $a->[1] <=> $b->[1] } @$all) {
 	 			my ($ip, $port, $name, $user, $pass, $loc, $updated, $devices, $pools, $summary, $vers, $acheck) = @$row;
 	 			$locnodes++; $tnodes++; my @nodemsg; my $problems = 0; my $dcount = 0; my $devtype = ""; my $notemp = 0;
 	 			while ($devices =~ m/\b(GPU|ASC|PGA)\b=\d+/g) { $locdevs++; $dcount++; }
@@ -105,22 +105,55 @@ sub make_farm_html {
 					if ($npage == $shownode) {
 						$nddata .= "<div class='row'><div class='cell'>$loc</div>";
 					}
-					my $pdata = ""; my $pname;
+					my $pname = ""; my $pdata;
 	 				if ($pools ne "None") {
 	 				 	my $plm=0; 
-		 				while (!defined $pname) {
-							while ($pools =~ m/POOL=(\d).+,?URL=(.+?),Status=(\w+?),Priority=(\d),.+,Last Share Difficulty=(\d+)\.\d+,.+,Pool Rejected%=(\d+\.\d+),/g) {
-								my $poolid = $1; my $purl = $2; my $pstat = $3; my $ppri = $4; my $pdiff = $5; my $prej = $6; 
+		 				while ($plm < 5) {
+							while ($pools =~ m/POOL=(\d).+,?URL=(.+?),Status=(\w+?),Priority=(\d),/g) {
+								my $poolid = $1; my $purl = $2; my $pstat = $3; my $ppri = $4; 
 								if ($ppri == $plm && $pstat eq "Alive") {
 									$pname = $2 if ($purl =~ m|://(\w+-?\w+\.)+?(\w+-?\w+\.\w+:\d+)|); 
 								}
 							}
+							last if ($pname ne "");
 							$plm++;
 						}
-	
 						$pname = "N/A" if (! defined $pname); 
-	 		    	$pdata .= "<td>" . $pname . "</td>";
-	 				} else { $pdata .= "<td>N / A</td>"; }
+	 		    	$pdata .= "<td>" . $pname . "</td>";	 		    
+						if ($npage == $shownode) {
+							while ($pools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+)\.\d+,.+,Pool Rejected%=(\d+\.\d+),/g) {
+								my $poolid = $1; my $purl = $2; my $pstat = $4; my $ppri = $5; my $puser = $6; my $pdiff = $7; my $prej = $8; 
+								my @pdata = $dbh->selectrow_array("SELECT LastUsed, Alias FROM Pools WHERE URL= ? AND Worker= ?", undef, $purl, $puser);
+	  						my ($plast, $palias) = @pdata;
+	  						if ($plast > 0) {
+		  						$plast = POSIX::strftime("%m-%d %H:%M", localtime($plast));
+								} else { $plast = "never" }
+								my $pusr = $puser;
+								if (length($pusr) > 20) { 
+							    $pusr = substr($pusr, 0, 6) . " ... " . substr($pusr, -6, 6) if (index($pusr, '.') < 0);
+							  }
+							  if ($pstat eq "unknown") {
+		    					$pstat = "<div class='warn'>$pstat</div>";
+		  					} elsif ($pstat eq "Dead") {
+		    					$pstat = "<div class='error'>$pstat</div>";
+		  					} else {
+		    					$pstat = "<div class='ok'>$pstat</div>";
+								}
+								$ndpdata .= "<div class='row' id='tablebody'>";
+								$ndpdata .= "<div class='cell'>$poolid</div>";
+								$ndpdata .= "<div class='cell'>$purl</div>";
+								$ndpdata .= "<div class='cell'>$pusr</div>";
+								$ndpdata .= "<div class='cell'>$palias</div>";
+								$ndpdata .= "<div class='cell'>$ppri</div>";
+								$ndpdata .= "<div class='cell'>$pstat</div>";
+								$ndpdata .= "<div class='cell'>$pdiff</div>";
+								$ndpdata .= "<div class='cell'>$prej</div>";
+								$ndpdata .= "<div class='cell'>$plast</div>";
+								$ndpdata .= "</div>";
+							}
+						}
+	 				}
+
 		 			if ($summary ne "None") {
 		 				my $mrt = 0; $mrt = $1 if $summary =~ /Elapsed=(\d+),/;
 		 				if ($mrt > 0) {
@@ -151,7 +184,7 @@ sub make_farm_html {
 								$nddata .= "<div class='cell'>$mwu</div>";
 								$nddata .= "<div class='cell'>$mrat</div>";
 							} else { 
-								$ndata .= "<td>$mname v$mvers";
+								$ndata .= "<td nowrap>$mname v$mvers";
 			 				  $ndata .= "<br>" . $mrth . "</td>";
 			 					$ndata .= $pdata;
 			 					$ndata .= "<td>" . $mmhs . " Mh/s</td>";
@@ -180,29 +213,38 @@ sub make_farm_html {
 								my $devid = $1 if ($devdata =~ m/^(\d),/); 
 								my $dstat = $1 if ($devdata =~ m/Status=(\w+),/); 					
 								my $dhash = $1 * 1000 if ($devdata =~ m/MHS\s\d+s=(\d+\.\d+),/); 					
-								$dhash = sprintf("%.0f", $dhash); 
+								$dhash = sprintf("%.0f", $dhash); my $hdhash = "$dhash Kh/s";
 								$tothash += $dhash; $lochash += $dhash;	
 								if ($dhash < $PLACEHOLDER) {
 									$dproblem[$devid]++; $problems++;
 									push(@nodemsg, "Device $devid is below minimum hash rate");
-									$dhash = "<div class='error'>" . $dhash . '</div>';
+									$hdhash = "<div class='error'>" . $hdhash . '</div>';
 								}
 								my $dpool = $1 if ($devdata =~ m/Pool=(\d),/); 
 								my $dacc = $1 if ($devdata =~ m/Accepted=(\d+),/); 
 								my $drej = $1 if ($devdata =~ m/Rejected=(\d+),/); 
 								my $drrat = $1 if ($devdata =~ m/Device Rejected%=(\d+\.\d+),/); 
+								my $rsum; 
+								if ($drrat > $PLACEHOLDER+5) {
+									$dproblem[$devid]++; $problems++;
+									push(@nodemsg, "Device $devid is above reject rate");
+									$rsum = "<div class='error'>$dacc / $drej ($drrat%)</div>";
+								} else { $rsum = "$dacc / $drej ($drrat%)"; }
 								my $dhwe = $1 if ($devdata =~ m/Hardware Errors=(\d+),/); 
+									if ($dhwe > $PLACEHOLDER) {
+									$dproblem[$devid]++; $problems++;
+									push(@nodemsg, "Device $devid is above hardware error limit");
+									$dhwe = "<div class='error'>" . $dhwe . '</div>';
+								}
 								my $dtemp = $1 if ($devdata =~ m/Temperature=(\d+.\d+),/);
 								my $dtemph; 
 								if ($dtemp > 0) {
-							 		if ($dtemp > $PLACEHOLDER +1000) {
-				 			 			$dproblem[$devid]++; 
-				 			 			$problems++;
+							 		if ($dtemp > $PLACEHOLDER +80) {
+				 			 			$dproblem[$devid]++; $problems++;
 								 		push(@nodemsg, "Device $devid is over maximum temp");						
 								 		$dtemph = "<div class='error'>" . sprintf("%.0f", $dtemp) . 'C</div>';
 								 	} elsif ($dtemp < $PLACEHOLDER) {
-								 		$dproblem[$devid]++; 
-								 		$problems++;
+								 		$dproblem[$devid]++; $problems++;
 								 		push(@nodemsg, "Device $devid is below minimum temp");	
 								 		$dtemph = "<div class='error'>" . sprintf("%.0f", $dtemp) . 'C</div>';
 									} else {
@@ -215,22 +257,25 @@ sub make_farm_html {
 									$dfans = $1 if ($devdata =~ m/Fan Speed=(\d+),/); 					
 									$dfanp = $1 if ($devdata =~ m/Fan Percent=(\d+),/);
 									if (($dfans < $PLACEHOLDER) && (! $dfans eq '0')) {
-										$dproblem[$devid]++;
-										$problems++;
+										$dproblem[$devid]++; $problems++;
 										push(@nodemsg, "GPU $devid is below minimum fan rpm");
 										$dfans = "<div class='error'>" . $dfans . '</div>';
-									}  				
+									}  elsif ($dfans > $PLACEHOLDER+5000) {
+										$dproblem[$devid]++; $problems++;
+										push(@nodemsg, "GPU $devid is above maximum fan rpm");
+										$dfans = "<div class='error'>" . $dfans . '</div>';			
+									}
 									$dint = $1 if ($devdata =~ m/Intensity=(\d+),/); 
 									$dcore = $1 if ($devdata =~ m/GPU Clock=(\d+),/); 
 									$dmem = $1 if ($devdata =~ m/Memory Clock=(\d+),/); 
 									$dpwr = $1 if ($devdata =~ m/GPU Voltage=(\d+\.\d+),/); 
 								}
-								$ndddata .= "<div class='row'>";
+								$ndddata .= "<div class='row' id='tablebody'>";
 								$ndddata .= "<div class='cell'>$devid</div>";
 								$ndddata .= "<div class='cell'>$dstat</div>";
-								$ndddata .= "<div class='cell'>$dhash Kh/s</div>";
+								$ndddata .= "<div class='cell'>$hdhash</div>";
 								$ndddata .= "<div class='cell'>$dpool</div>";
-								$ndddata .= "<div class='cell'>$dacc / $drej ($drrat%)</div>";
+								$ndddata .= "<div class='cell'>$rsum</div>";
 								$ndddata .= "<div class='cell'>$dhwe</div>";
 								$ndddata .= "<div class='cell'>$dtemph</div>" if ($notemp > 0);
 								if ($devtype eq "GPU") {
@@ -245,7 +290,7 @@ sub make_farm_html {
 						} else { 
 							while ($devices =~ m/\b(GPU|ASC|PGA)\b=(\d).+,MHS\s\d+s=(\d+\.\d+),/g) {
 								$devtype = $1; $devtype = "ASIC" if ($devtype eq "ASC"||$devtype eq "PGA");
-								my $devid = $2; my $dhash = $3 * 1000; $dhash = sprintf("%.0f", $dhash); 
+								my $devid = $2; my $dhash = $3 * 1000; $dhash = sprintf("%.0f", $dhash);
 								if ($dhash < $PLACEHOLDER) {
 									$dproblem[$devid]++; $problems++;
 									push(@nodemsg, "Device $devid is below minimum hash rate");
@@ -313,11 +358,12 @@ sub make_farm_html {
 		 			$ddata .= "</tr>";
 		 		}
 				if ($npage == $shownode) {
-					$ndhead .= '<div class="row" id="olink"><a href="testfarm">Back to Overview</a></div><br>';
-					$ndhead .= "<div id='locsum'> $name ($ip / $port) - $mmhs Mh/s with $dcount Device";
+					$ndhead .= '<div class="row" id="olink"><a href="farmstatus"><b>Back to Overview</b></a> ';
+					$ndhead .= " | <div class='cell'>$adata</div>" if ($adata ne "");
+					$ndhead .= "</div><br><div id='locsum'> $name ($ip / $port) - $mmhs Mh/s with $dcount Device";
 					$ndhead .= "s" if ($dcount != 1);
 					$ndhead .= "</div>";
-					if ($dcount > 0) {
+					if ($checkin < 65) {
 						$ndhead .= "<div class='table' id='nodedetail'>";
 						$ndhead .= "<div class='header'>";
 						$ndhead .= "<div class='row'>";
@@ -348,7 +394,22 @@ sub make_farm_html {
 							$nddhead .= "<div class='cell'>Power</div>";
 						}
 						$nddhead .= "</div></div>";
-					}			
+								
+						$ndphead .= "<div class='table' id='pooldetail'>";
+						$ndphead .= "<div class='header'>";
+						$ndphead .= "<div class='row'>";
+					  $ndphead .= "<div class='cell'>Pool</div>";
+					  $ndphead .= "<div class='cell'>URL</div>";
+					  $ndphead .= "<div class='cell'>Worker</div>";
+					  $ndphead .= "<div class='cell'>Alias</div>";
+					  $ndphead .= "<div class='cell'>Pri</div>";
+					  $ndphead .= "<div class='cell'>Status</div>";
+					  $ndphead .= "<div class='cell'>Difficulty</div>";
+					  $ndphead .= "<div class='cell'>Reject %</div>";
+					  $ndphead .= "<div class='cell'>Last Used</div>";
+						$ndphead .= "</div></div>";
+					}
+
 				} else {
 		 			$nhead .= "<TR class='nodehdr'>";
 					$nhead .= "<TD>ID</TD>";
@@ -365,7 +426,7 @@ sub make_farm_html {
 		 				$nhead .= "s" if ($dcount > 1); 
 		 				$nhead .= "</TD>";
 		 			}
-			 		if ($devices =~ m/^GPU=/) {
+			 		if (($devices =~ m/^GPU=/) && ($checkin < 65)){
 		 				$nhead .= "<TD colspan=$dcount>Fan Speed";
 			 			$nhead .= "s" if ($dcount > 1); 
 			 			$nhead .= "</TD>";
@@ -408,6 +469,9 @@ sub make_farm_html {
 		$ndhtml .= $nddhead;
 		$ndhtml .= $ndddata;
 		$ndhtml .= "</div>";
+		$ndhtml .= $ndphead;
+		$ndhtml .= $ndpdata;
+		$ndhtml .= "</div>";
 	
 		#POOLS
 	
@@ -422,13 +486,12 @@ sub make_farm_html {
 	  $phtml .= "<div class='cell'>Alias</div>";
 		$phtml .= "</div></div>";
 		
-		$sth = $dbh->prepare("SELECT * FROM Pools"); $sth->execute(); 
-		my $pall = $sth->fetchall_arrayref(); $sth->finish();	
 		my $pcount = 0;
+		my $pall = $dbh->selectall_arrayref("SELECT * FROM Pools"); 
 		foreach my $prow (@$pall) {
 	 		my ($purl, $puser, $ppass, $pupdated, $pstatus, $ppri, $pdiff, $prej, $palias, $plast) = @$prow;
 	 		if ($plast +90 > $now) {
-				$phtml .= "<div class='row'>";
+				$phtml .= "<div class='row' id='tablebody'>";
 		    $phtml .= "<div class='cell'>$purl</div>";
 				if (length($puser) > 20) { 
 		    	$puser = substr($puser, 0, 6) . " ... " . substr($puser, -6, 6) if (index($puser, '.') < 0);
@@ -452,8 +515,8 @@ sub make_farm_html {
 	
 		# Overview
 	
-		$head = "<div id='overview'>";	
-			$head .= "<div id='logo' class='odata'><IMG src='images/IFMI-FM-logo.png'></div>" ;	
+		$head = "<div id='overview' nowrap>";	
+			$head .= '<div id="logo" class="odata"><a href="https://miner.farm/"><IMG src="/images/miner.farm.logo-revsm.png"></a></div>';	
 		
 			$head .= "<div id='overviewhash' class='odata'>";
 			$thrh = sprintf("%.2f", $tothash / 1000 );
@@ -526,12 +589,12 @@ sub make_farm_html {
 			$head .= "<br>$pcount active pool account";
 			$head .= 's' if ($pcount != 1);
 			$head .= "</div>";
-			$head .= "<div id='icon' class='odata'><a href='farmsettings.pl'><img src='images/gear.png'></a></div>";
+			$head .= "<div id='icon' class='odata'><a href='farmsettings'><img src='/images/gear.png'></a></div>";
 			$head .= "<div id='overviewend' class='odata'><br></div>";
 		$head .= "</div>";
 		$dbh->disconnect();
 	} else { 
-		$html .= "<div id='waiting'><h1>Miner database not available!</H1><P>&nbsp;<P></div>";
+		$html .= "<div id='waiting' class='content'><h1>Miner database not available!</H1><P>&nbsp;<P></div>";
 	}
 	return ($thrh, $head, $shownode > -1 ? $ndhtml : $html);
 }

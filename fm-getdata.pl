@@ -46,10 +46,10 @@ sub doGetData {
 					$nsum = $1 if $nsum =~ m/SUMMARY,(.+?)\|/g;
 					my $npools = &sendAPIcommand("pools","",$ip,$port);
 					my $poolsd = $1 if ($npools =~ m/STATUS=S,.+?\|(.+)/g);
-					$poolsd =~ s/\|/\n/g;
+					$poolsd =~ s/\|/\n/g if (defined $poolsd);
 					my $ndevs = &sendAPIcommand("devs","",$ip,$port);
 					my $devsd = $1 if ($ndevs =~ m/STATUS=S,.+?\|(.+)/g);
-					$devsd =~ s/\|/\n/g;
+					$devsd =~ s/\|/\n/g if (defined $devsd);
 					$sth = $cdbh->prepare("UPDATE Miners SET Access= ?, Version= ?, Summary= ?, Pools= ?, Devices= ?, Updated= ? WHERE IP= ? AND Port= ? ");
 					$sth->execute($acheck, $nvers, $nsum, $poolsd, $devsd, $now, $ip, $port); $sth->finish();
 		  	}
@@ -73,7 +73,7 @@ sub doGetData {
 		my $mpall = $pdbh->selectall_arrayref("SELECT Pools, Devices, Updated FROM Miners");	
 		foreach my $mprow (@$mpall) {
 			my ($mpools, $mdevs, $mupdated) = @$mprow;
-			if ($mupdated+90 > $now) {
+			if (($mupdated+90 > $now) && (defined $mpools)) {
 				my $mpoid; my $mpurl; my $mpstat; my $mppri; my $mpuser; my $mpdiff; my $mprej;  
 				while ($mpools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+)\.\d+,.+,Pool Rejected%=(\d+\.\d+),/g) {
 					$mpoid = $1; $mpurl = $2; $mpstat = $4; $mppri = $5; $mpuser = $6; $mpdiff = $7; $mprej = $8; 
