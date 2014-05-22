@@ -23,7 +23,7 @@ sub make_settings_html {
 		my $apoolu = $in{'npooluser'};
 		my $apoolp = $in{'npoolpw'};
 		my $apoola = $in{'npoola'};
-		my $userid = ""; $userid = $in{'user_id'} if ($in{'user_id'} ne "");
+		my $userid = ""; $userid = $in{'user_id'} if (defined $in{'user_id'});
 	  &addFMPool($apooln, $apoolu, $apoolp, $apoola, $userid);
 	  $apooln = ""; $apoolu = ""; $apoolp = ""; $apoola = ""; 
 	}
@@ -34,14 +34,14 @@ sub make_settings_html {
 		my $upoolu = $upu[1];
 		my $upoolp = $in{'upoolpw'}; 
 		my $upoola = $in{'upoola'}; 
-		my $userid = ""; $userid = $in{'user_id'} if ($in{'user_id'} ne "");
+		my $userid = ""; $userid = $in{'user_id'} if (defined $in{'user_id'});
 		&updateFMPool($upooln, $upoolu, $upoolp, $upoola, $userid);
 		$upooln = ""; $upoolu = ""; $upoolp = ""; $upoola = "";
 	}
 	my $dpool = $in{'delpool'};
 	if (defined $dpool) {
 		my $duser = $in{'deluser'};
-		my $userid = ""; $userid = $in{'user_id'} if ($in{'user_id'} ne "");
+		my $userid = ""; $userid = $in{'user_id'} if (defined $in{'user_id'});
 	  &deleteFMPool($dpool, $duser, $userid);
 	  $dpool = "";
 	}
@@ -52,7 +52,7 @@ sub make_settings_html {
 		my $anodeu = $in{'nnuname'};
 		my $anodepw = $in{'nnpass'};
 		my $anodeg = $in{'nngroup'};
-		my $userid = ""; $userid = $in{'user_id'} if ($in{'user_id'} ne "");
+		my $userid = ""; $userid = $in{'user_id'} if (defined $in{'user_id'});
 	  &addFMNode($anodeip, $anodep, $anodeh, $anodeu, $anodepw, $anodeg, $userid);
 	  $anodeip = ""; $anodeh = ""; $anodep = ""; $anodeg = ""; $anodeu = ""; $anodepw = "";
 	}
@@ -65,14 +65,14 @@ sub make_settings_html {
 		my $unodeu = $in{'ununame'};
 		my $unodepw = $in{'unpass'};
 		my $unodeg = $in{'ungroup'};
-		my $userid = ""; $userid = $in{'user_id'} if ($in{'user_id'} ne ""); 
+		my $userid = ""; $userid = $in{'user_id'} if (defined $in{'user_id'}); 
 		&updateFMNode($unodeip, $unodeh, $unodep, $unodeg, $unodeu, $unodepw, $userid);
 		$unodeip = ""; $unodeh = ""; $unodep = ""; $unodeg = ""; $unodeu = ""; $unodepw = "";
 	}
 	my $dnode = $in{'delnode'};
 	if (defined $dnode) {		
 		my $dport = $in{'delport'};
-		my $userid = ""; $userid = $in{'user_id'} if ($in{'user_id'} ne "");
+		my $userid = ""; $userid = $in{'user_id'} if (defined $in{'user_id'});
 	  &deleteFMNode($dnode, $dport, $userid);
 	  $dnode = ""; $dport = "";
 	}
@@ -319,11 +319,7 @@ sub make_settings_html {
 sub run_farmsettings_as_cgi {
 	use CGI; 
 	my $dbname = "/opt/ifmi/fm.db"; 
-
- # doesnt work, dont know why
-	my %in = @_;
-	ReadParse(%in);
-
+	my %in = Vars;
 	my $fm_name = `hostname`; chomp $fm_name;
 	my $iptxt = "1.1.1.1"; my $nicget = `/sbin/ifconfig`; 
 	  while ($nicget =~ m/(\w\w\w\w?\d)(:0)?\s.+\n\s+inet addr:(\d+\.\d+\.\d+\.\d+)\s/g) {
@@ -341,6 +337,6 @@ sub run_farmsettings_as_cgi {
 	print "</div></div></BODY></HTML>";
 }
 
-run_farmsettings_as_cgi() unless caller;
+run_farmsettings_as_cgi(my $in) unless caller;
 
 1; 
