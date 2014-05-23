@@ -14,8 +14,10 @@ sub doGetData {
 	my $now = time;
 	if (! -e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
-		$dbh->do("CREATE TABLE Miners(IP TEXT, Port INTEGER, Name TEXT, User TEXT, Pass TEXT, Mgroup TEXT, Updated INT, Devices TEXT, Pools TEXT, Summary TEXT, Version TEXT, Access TEXT)");
-#		$dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access) VALUES ('192.168.0.1', '4028', 'unknown', '', '', 'Default', '0', 'None', 'None', 'None', 'None', 'E')");
+		$dbh->do("CREATE TABLE Miners(IP TEXT, Port INTEGER, Name TEXT, User TEXT, Pass TEXT, Mgroup TEXT, Updated INT, Devices TEXT, Pools TEXT, Summary TEXT, Version TEXT, Access TEXT, MonProf INTEGER, Amail TEXT)");
+#		$dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access, MonProf, Amail) VALUES ('192.168.0.1', '4028', 'unknown', '', '', 'Default', '0', 'None', 'None', 'None', 'None', 'E', '0', 'N')");
+		$dbh->do("CREATE TABLE MProfiles(ID INTEGER, Name TEXT, hlow INTEGER, rrhi INTEGER, hwe INTEGER, tmphi INTEGER, tmplo INTEGER, fanhi INTEGER, fanlo INTEGER, loadlo INTEGER)");
+		$dbh->do("INSERT INTO MProfiles(ID, Name, hlow, rrhi, hwe, tmphi, tmplo, fanhi, fanlo, loadlo) VALUES ('0', 'Default', '200', '5', '1', '85', '45', '4000', '1000', '1')");
 		$dbh->do("CREATE TABLE Pools(URL TEXT, Worker TEXT, Pass TEXT, Updated INT, Status TEXT, Pri INT, Diff INT, Rej INT, Alias TEXT, LastUsed INT)");
 		$dbh->do("INSERT INTO Pools(URL, Worker, Pass, Updated, Status, Pri, Diff, Rej, Alias, LastUsed) VALUES ('NEWPOOL', '1JBovQ1D3P4YdBntbmsu6F1CuZJGw9gnV6', '', '$now', 'unknown', '0', '0', '0', 'DONATE', '0')");
 		my $dsth = $dbh->prepare("UPDATE Pools SET URL= ? WHERE URL='NEWPOOL'");
@@ -73,9 +75,9 @@ sub doGetData {
 		my $mpall = $pdbh->selectall_arrayref("SELECT Pools, Devices, Updated FROM Miners");	
 		foreach my $mprow (@$mpall) {
 			my ($mpools, $mdevs, $mupdated) = @$mprow;
-			if (($mupdated+90 > $now) && (defined $mpools)) {
+			if (($mupdated+90 > $now) && (defined $mpools) && (defined $mdevs)) {
 				my $mpoid; my $mpurl; my $mpstat; my $mppri; my $mpuser; my $mpdiff; my $mprej;  
-				while ($mpools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+)\.\d+,.+,Pool Rejected%=(\d+\.\d+),/g) {
+				while ($mpools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+\.\d+),.+,Pool Rejected%=(\d+\.\d+),/g) {
 					$mpoid = $1; $mpurl = $2; $mpstat = $4; $mppri = $5; $mpuser = $6; $mpdiff = $7; $mprej = $8; 
 					my $ucount = 0; my $upsth; 
 		    	my $upall = $pdbh->selectall_arrayref("SELECT URL, Worker, LastUsed FROM Pools"); 

@@ -24,8 +24,7 @@ sub make_farm_html {
 	my $problemascs = 0; my $okascs = 0;
 	my $problemgpus = 0; my $okgpus = 0;
 	my $problemnodes = 0; my $oknodes = 0;
-	my $problempools = 0; my $okpools = 0;
-	my $PLACEHOLDER = 1;
+	my $problempools = 0; my $okpools = 0;	
 	my $html = "<div id='farm' class='content'>"; 
 	my $adata = `wget --quiet -O - ads.miner.farm/fm.html`; 
 	$html .= "<div class='cell' id=adblock>$adata</td></div><br>" if ($adata ne "");
@@ -33,7 +32,6 @@ sub make_farm_html {
 
 	if (-e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
-	
 		my $ndhead = ""; my $nddata = ""; my $mmhs = ""; my $nddhead = ""; my $ndddata = ""; my $ndphead = ""; my $ndpdata = "";
 		my @locs; my $lhtml;  my $phtml; 
 		my $sth = $dbh->prepare("SELECT Mgroup FROM Miners");  
@@ -52,7 +50,9 @@ sub make_farm_html {
 			my $nhtml = ""; my $nhead = ""; my $ndata = ""; my $ddata = ""; 
 			my $all = $dbh->selectall_arrayref("SELECT * FROM Miners WHERE Mgroup= ?", undef, $loc);
 			foreach my $row (sort { $a->[0] cmp $b->[0] || $a->[1] <=> $b->[1] } @$all) {
-	 			my ($ip, $port, $name, $user, $pass, $loc, $updated, $devices, $pools, $summary, $vers, $acheck) = @$row;
+	 			my ($ip, $port, $name, $user, $pass, $loc, $updated, $devices, $pools, $summary, $vers, $acheck, $mprof, $amail) = @$row;
+				my @monprof = $dbh->selectrow_array("SELECT * FROM MProfiles WHERE ID= ?", undef, $mprof); 	
+				my ($mpid, $mpname, $hlow, $rrhi, $hwe, $tmphi, $tmplo, $fanhi, $fanlo, $loadlo) = @monprof; 
 	 			$locnodes++; $tnodes++; my @nodemsg; my $problems = 0; my $dcount = 0; my $devtype = ""; my $notemp = 0;
 	 			while ($devices =~ m/\b(GPU|ASC|PGA)\b=\d+/g) { $locdevs++; $dcount++; }
 				my $errspan = $dcount*4;
@@ -105,6 +105,7 @@ sub make_farm_html {
 					if ($npage == $shownode) {
 						$nddata .= "<div class='row'><div class='cell'>$loc</div>";
 					}
+
 					my $pname = ""; my $pdata;
 	 				if ($pools ne "None") {
 	 				 	my $plm=0; 
@@ -121,7 +122,7 @@ sub make_farm_html {
 						$pname = "N/A" if (! defined $pname); 
 	 		    	$pdata .= "<td>" . $pname . "</td>";	 		    
 						if ($npage == $shownode) {
-							while ($pools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+)\.\d+,.+,Pool Rejected%=(\d+\.\d+),/g) {
+							while ($pools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+\.\d+),.+,Pool Rejected%=(\d+\.\d+),/g) {
 								my $poolid = $1; my $purl = $2; my $pstat = $4; my $ppri = $5; my $puser = $6; my $pdiff = $7; my $prej = $8; 
 								my @pdata = $dbh->selectrow_array("SELECT LastUsed, Alias FROM Pools WHERE URL= ? AND Worker= ?", undef, $purl, $puser);
 	  						my ($plast, $palias) = @pdata;
@@ -139,6 +140,8 @@ sub make_farm_html {
 		  					} else {
 		    					$pstat = "<div class='ok'>$pstat</div>";
 								}
+						  	$pdiff = sprintf("%.3f", $pdiff);
+		  					$prej = sprintf("%.2f", $prej);								
 								$ndpdata .= "<div class='row' id='tablebody'>";
 								$ndpdata .= "<div class='cell'>$poolid</div>";
 								$ndpdata .= "<div class='cell'>$purl</div>";
@@ -154,56 +157,8 @@ sub make_farm_html {
 						}
 	 				}
 
-		 			if ($summary ne "None") {
-		 				my $mrt = 0; $mrt = $1 if $summary =~ /Elapsed=(\d+),/;
-		 				if ($mrt > 0) {
-			 				$mmhs = $1 if $summary =~ /MHS\sav=(\d+\.\d+),/;
-			 				$mmhs = sprintf("%.2f", $mmhs);
-				 			my $mwu = $1 if $summary =~ /Work\sUtility=(\d+\.\d+),/;
-			 				$mwu = sprintf("%.2f", $mwu);
-			 				my $mrat = $1 if $summary =~ /Device Rejected%=(\d+.\d+),/;
-							$mrat =  sprintf("%.2f%%", $mrat);
-							my $mhwe = $1 if $summary =~ /Hardware Errors=(\d+),/;
-							my $mrth; my $minert; 
-			 				$mrth = sprintf("%dD %02d:%02d",(gmtime $mrt)[7,2,1]);
-							my $mname = ""; my $mvers = ""; my $avers; 
-							if ($vers =~ m/Miner=(\w+)?\s?(\d+\.\d+\.\d+),API=(\d+\.\d+)/) {
-								$mname = $1 if (defined $1);
-				  			$mvers = $2; 
-				  			$avers = $3; 
-							} else {
-								$mname = "unknown";
-							}				
-							if ($npage == $shownode) {
-								$nddata .= "<div class='cell'>$mname v$mvers</div>";
-						   	$acheck = "<div class='ok'>R W</div>" if ($acheck eq "S");
-	    					$acheck = "<div class='warn'>R O</div>" if ($acheck eq "E");
-								$nddata .= "<div class='cell'>$acheck</div>";
-								$nddata .= "<div class='cell'>$mrth</div>";
-								$nddata .= "<div class='cell'>$pname</div>";
-								$nddata .= "<div class='cell'>$mwu</div>";
-								$nddata .= "<div class='cell'>$mrat</div>";
-							} else { 
-								$ndata .= "<td nowrap>$mname v$mvers";
-			 				  $ndata .= "<br>" . $mrth . "</td>";
-			 					$ndata .= $pdata;
-			 					$ndata .= "<td>" . $mmhs . " Mh/s</td>";
-			 					$ndata .= "<td>" . $mwu . "</td>";
-			 					$ndata .= "<td>" . $mrat . "</td>";
-					 			if ($mhwe > 1) {
-					 				  $problems++;
-					 				  push(@nodemsg, "Hardware Errors");
-					 				  $ndata .= "<td class='error'>" . $mhwe . "</td>";
-					 			} else {
-					 				 $ndata .= "<td>" . $mhwe . "</td>";
-					 			}
-				 			}
-		 				} else {
-		 				  $problems++;
-		 				  push(@nodemsg, "Miner Stopped");
-		 				  $ndata .= "<td class='error' colspan=4>Miner Stopped</td>";
-		 				}					
-			 		} else { $ndata .= "<td colspan=4>Summary Info is Not Available</td>"; }
+
+	 				my $shwe = 0; my $srrat = 0; my $shrl = 0; 
 		 			if ($devices ne "None") {		
 		 				my @dproblem;
 						if ($npage == $shownode) {
@@ -215,8 +170,8 @@ sub make_farm_html {
 								my $dhash = $1 * 1000 if ($devdata =~ m/MHS\s\d+s=(\d+\.\d+),/); 					
 								$dhash = sprintf("%.0f", $dhash); my $hdhash = "$dhash Kh/s";
 								$tothash += $dhash; $lochash += $dhash;	
-								if ($dhash < $PLACEHOLDER) {
-									$dproblem[$devid]++; $problems++;
+								if ($dhash < $hlow) {
+									$dproblem[$devid]++; $problems++; $shrl++; 
 									push(@nodemsg, "Device $devid is below minimum hash rate");
 									$hdhash = "<div class='error'>" . $hdhash . '</div>';
 								}
@@ -225,25 +180,25 @@ sub make_farm_html {
 								my $drej = $1 if ($devdata =~ m/Rejected=(\d+),/); 
 								my $drrat = $1 if ($devdata =~ m/Device Rejected%=(\d+\.\d+),/); 
 								my $rsum; 
-								if ($drrat > $PLACEHOLDER+5) {
-									$dproblem[$devid]++; $problems++;
+								if ($drrat > $rrhi) {
+									$dproblem[$devid]++; $problems++; $srrat++;
 									push(@nodemsg, "Device $devid is above reject rate");
 									$rsum = "<div class='error'>$dacc / $drej ($drrat%)</div>";
 								} else { $rsum = "$dacc / $drej ($drrat%)"; }
 								my $dhwe = $1 if ($devdata =~ m/Hardware Errors=(\d+),/); 
-									if ($dhwe > $PLACEHOLDER) {
-									$dproblem[$devid]++; $problems++;
+									if ($dhwe > $hwe) {
+									$dproblem[$devid]++; $problems++; $shwe++; 
 									push(@nodemsg, "Device $devid is above hardware error limit");
 									$dhwe = "<div class='error'>" . $dhwe . '</div>';
 								}
 								my $dtemp = $1 if ($devdata =~ m/Temperature=(\d+.\d+),/);
 								my $dtemph; 
 								if ($dtemp > 0) {
-							 		if ($dtemp > $PLACEHOLDER +80) {
+							 		if ($dtemp > $tmphi) {
 				 			 			$dproblem[$devid]++; $problems++;
 								 		push(@nodemsg, "Device $devid is over maximum temp");						
 								 		$dtemph = "<div class='error'>" . sprintf("%.0f", $dtemp) . 'C</div>';
-								 	} elsif ($dtemp < $PLACEHOLDER) {
+								 	} elsif ($dtemp < $tmplo) {
 								 		$dproblem[$devid]++; $problems++;
 								 		push(@nodemsg, "Device $devid is below minimum temp");	
 								 		$dtemph = "<div class='error'>" . sprintf("%.0f", $dtemp) . 'C</div>';
@@ -256,14 +211,16 @@ sub make_farm_html {
 								if ($devtype eq "GPU") {
 									$dfans = $1 if ($devdata =~ m/Fan Speed=(\d+),/); 					
 									$dfanp = $1 if ($devdata =~ m/Fan Percent=(\d+),/);
-									if (($dfans < $PLACEHOLDER) && (! $dfans eq '0')) {
+									if (($dfans < $fanlo) && (! $dfans eq '0')) {
 										$dproblem[$devid]++; $problems++;
 										push(@nodemsg, "GPU $devid is below minimum fan rpm");
-										$dfans = "<div class='error'>" . $dfans . '</div>';
-									}  elsif ($dfans > $PLACEHOLDER+5000) {
+										$dfans = "<div class='error'>$dfans ($dfanp%)</div>";
+									}  elsif ($dfans > $fanhi) {
 										$dproblem[$devid]++; $problems++;
 										push(@nodemsg, "GPU $devid is above maximum fan rpm");
-										$dfans = "<div class='error'>" . $dfans . '</div>';			
+										$dfans = "<div class='error'>$dfans ($dfanp%)</div>";			
+									} else {
+										$dfans = "$dfans ($dfanp%)"
 									}
 									$dint = $1 if ($devdata =~ m/Intensity=(\d+),/); 
 									$dcore = $1 if ($devdata =~ m/GPU Clock=(\d+),/); 
@@ -279,7 +236,7 @@ sub make_farm_html {
 								$ndddata .= "<div class='cell'>$dhwe</div>";
 								$ndddata .= "<div class='cell'>$dtemph</div>" if ($notemp > 0);
 								if ($devtype eq "GPU") {
-									$ndddata .= "<div class='cell'>$dfans ($dfanp%)</div>";
+									$ndddata .= "<div class='cell'>$dfans</div>";
 									$ndddata .= "<div class='cell'>$dint</div>";
 									$ndddata .= "<div class='cell'>$dcore Mhz</div>";
 									$ndddata .= "<div class='cell'>$dmem Mhz</div>";
@@ -288,28 +245,49 @@ sub make_farm_html {
 								$ndddata .= "</div>";
 							}
 						} else { 
+							while ($devices =~ m/\b(GPU|ASC|PGA)\b=(\d).+,Device Rejected%=(\d+\.\d+),/g) {
+								my $devid = $2; my $drrat = $3;
+								if ($drrat > $rrhi) {
+									$dproblem[$devid]++; $problems++; $srrat++;
+									push(@nodemsg, "Device $devid is above reject rate");
+								} 
+							}
+							while ($devices =~ m/\b(GPU|ASC|PGA)\b=(\d).+,Hardware Errors=(\d+),/g) {
+								my $devid = $2; my $dhwe = $3; 
+								if ($dhwe > $hwe) {
+									$dproblem[$devid]++; $problems++; $shwe++; 
+									push(@nodemsg, "Device $devid is above hardware error limit");
+								}
+							}
+							my $shdata = '<td> 0 </TD>';
 							while ($devices =~ m/\b(GPU|ASC|PGA)\b=(\d).+,MHS\s\d+s=(\d+\.\d+),/g) {
 								$devtype = $1; $devtype = "ASIC" if ($devtype eq "ASC"||$devtype eq "PGA");
-								my $devid = $2; my $dhash = $3 * 1000; $dhash = sprintf("%.0f", $dhash);
-								if ($dhash < $PLACEHOLDER) {
+								my $devid = $2; my $dhash = $3;
+								if (defined $dhash) {
+									$dhash = sprintf("%.0f", $dhash * 1000);
+								} else {
+								 	$dhash = 0; 
+								}
+								if ($dhash < $hlow) {
 									$dproblem[$devid]++; $problems++;
 									push(@nodemsg, "Device $devid is below minimum hash rate");
-									$ddata .= "<td class='error'>" . $dhash . '</TD>';
+									$shdata = "<td class='error'>" . $dhash . '</TD>';
 								} else {
-									$ddata .= '<td>' . $dhash . '</TD>';						
+									$shdata = '<td>' . $dhash . '</TD>';						
 								}										
+								$ddata .= $shdata;
 								$tothash += $dhash;
 								$lochash += $dhash;											
 							}	
 							while ($devices =~ m/\b(GPU|ASC|PGA)\b=(\d).+,Temperature=(\d+.\d+),/g) {
 								my $devid = $2; my $dtemp = $3; 
 								if ($dtemp > 0) {
-							 		if ($dtemp > $PLACEHOLDER +1000) {
+							 		if ($dtemp > $tmphi) {
 				 			 			$dproblem[$devid]++; 
 				 			 			$problems++;
 								 		push(@nodemsg, "Device $devid is over maximum temp");						
 								 		$ddata .= "<td class='error'>";
-								 	} elsif ($dtemp < $PLACEHOLDER) {
+								 	} elsif ($dtemp < $tmplo) {
 								 		$dproblem[$devid]++; 
 								 		$problems++;
 								 		push(@nodemsg, "Device $devid is below minimum temp");	
@@ -323,11 +301,14 @@ sub make_farm_html {
 							}
 							while ($devices =~ m/GPU=(\d).+,Fan\sSpeed=(\d+),/g) {
 								my $devid = $1; my $gfans = $2; 
-								if (($gfans < $PLACEHOLDER) && (! $gfans eq '0')) {
-									$dproblem[$devid]++;
-									$problems++;
+								if (($gfans < $fanlo) && (! $gfans eq '0')) {
+									$dproblem[$devid]++; $problems++;
 									push(@nodemsg, "GPU $devid is below minimum fan rpm");
 									$ddata .= "<td class='error'>" . $gfans . '</TD>';
+								} elsif ($gfans > $fanhi) {
+									$dproblem[$devid]++; $problems++;
+									push(@nodemsg, "GPU $devid is above maximum fan rpm");
+									$ddata .= "<td class='error'>" . $gfans . '</td>';			
 								} else {
 									$ddata .= '<td>' . $gfans . '</TD>';
 								}
@@ -346,12 +327,64 @@ sub make_farm_html {
 	 					 	} 
 						}
 	 				} else { $ddata .= "<td colspan=$errspan>Device Data is Not Available</td>"; }
+		 			
+		 			if ($summary ne "None") {
+		 				my $mrt = 0; $mrt = $1 if $summary =~ /Elapsed=(\d+),/;
+		 				if ($mrt > 0) {
+			 				$mmhs = $1 if $summary =~ /MHS\sav=(\d+\.\d+),/;
+			 				$mmhs = sprintf("%.2f", $mmhs);
+				 			my $mwu = $1 if $summary =~ /Work\sUtility=(\d+\.\d+),/;
+			 				$mwu = sprintf("%.2f", $mwu);
+			 				my $mrat = $1 if $summary =~ /Device Rejected%=(\d+.\d+),/;
+							$mrat =  sprintf("%.2f%%", $mrat);
+							my $mhwe = $1 if $summary =~ /Hardware Errors=(\d+),/;
+			 				my $mrth = sprintf("%dD %02d:%02d",(gmtime $mrt)[7,2,1]);
+							my $mname = ""; my $mvers = ""; my $avers; 
+							if ($vers =~ m/Miner=(\w+)?\s?(\d+\.\d+\.\d+),API=(\d+\.\d+)/) {
+								$mname = $1 if (defined $1);
+				  			$mvers = $2; 
+				  			$avers = $3; 
+							} else {
+								$mname = "unknown";
+							}				
+							if ($npage == $shownode) {
+								$nddata .= "<div class='cell'>$mname v$mvers</div>";
+						   	$acheck = "<div class='ok'>R W</div>" if ($acheck eq "S");
+	    					$acheck = "<div class='warn'>R O</div>" if ($acheck eq "E");
+								$nddata .= "<div class='cell'>$acheck</div>";
+								$nddata .= "<div class='cell'>$mrth</div>";
+								$nddata .= "<div class='cell'>$pname</div>";
+								$nddata .= "<div class='cell'>$mwu</div>";
+								$mrat = "<div class='error'>$mrat</div>" if (defined $mrat && $srrat > 0);								
+								$nddata .= "<div class='cell'>$mrat</div>";
+							} else { 
+								$ndata .= "<td nowrap>$mname v$mvers";
+			 				  $ndata .= "<br>" . $mrth . "</td>";
+			 					$ndata .= $pdata;
+								if ($shrl > 0) { $ndata .= "<td class='error'>" . $mmhs . " Mh/s</td>"; 
+								} else { $ndata .= "<td>" . $mmhs . " Mh/s</td>"; }
+			 					$ndata .= "<td>" . $mwu . "</td>";
+								if ($srrat > 0) { $ndata .= "<td class='error'>" . $mrat . "</td>";
+								} else { $ndata .= "<td>" . $mrat . "</td>"; }
+					 			if ($shwe > 0) { $ndata .= "<td class='error'>" . $mhwe . "</td>";
+					 			} else { $ndata .= "<td>" . $mhwe . "</td>"; }
+				 			}
+		 				} else {
+		 				  $problems++;
+		 				  push(@nodemsg, "Miner Stopped");
+		 				  $ndata .= "<td class='error' colspan=4>Miner Stopped</td>";
+		 				}					
+			 		} else { $ndata .= "<td colspan=4>Summary Info is Not Available</td>"; }
+
+
 		 			if ($problems > 0) {
 		 				$totproblems += $problems;
 		 				$locproblems += $problems;
 		 				$problemnodes++;
 		 			} else { $oknodes++; }		 		
 			 	}
+
+
 				if ($npage == $shownode) {
 		 			$nddata .= "</div></div>";
 		 		} else {
@@ -496,6 +529,8 @@ sub make_farm_html {
 				if (length($puser) > 20) { 
 		    	$puser = substr($puser, 0, 6) . " ... " . substr($puser, -6, 6) if (index($puser, '.') < 0);
 		  	} 
+		  	$pdiff = sprintf("%.3f", $pdiff);
+		  	$prej = sprintf("%.2f", $prej);
 		    $phtml .= "<div class='cell'>$puser</div>";
 		    $phtml .= "<div class='cell'>$pdiff</div>";
 		    $phtml .= "<div class='cell'>$prej</div>";

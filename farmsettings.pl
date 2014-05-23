@@ -77,6 +77,37 @@ sub make_settings_html {
 	  $dnode = ""; $dport = "";
 	}
 
+	my $delmp = $in{'delmprof'};
+	if (defined $delmp) {		
+		my $userid = ""; $userid = $in{'user_id'} if (defined $in{'user_id'});
+	  &deleteMonProf($delmp, $userid);
+	  $delmp = ""; 
+	}
+	my $ummonprof = $in{'mprofid'};
+	if (defined $ummonprof) {
+		my $umpname = $in{'mpname'};
+		my $umphr = $in{'mprate'};
+		my $umprr = $in{'mprr'};
+		my $umphw = $in{'mphw'};
+		my $umpthi = $in{'mpthi'};
+		my $umptlo = $in{'mptlo'};
+		my $umpfhi = $in{'mpfhi'};
+		my $umpflo = $in{'mpflo'};
+		my $umpllo = $in{'mpllo'};
+		my $userid = ""; $userid = $in{'user_id'} if (defined $in{'user_id'}); 
+		&updateMonProf($ummonprof, $umpname, $umphr, $umprr, $umphw, $umpthi, $umptlo, $umpfhi, $umpflo, $umpllo, $userid);
+		$ummonprof = ""; $umphr = ""; $umprr = ""; $umphw = ""; $umpthi = ""; $umptlo = ""; $umpfhi = ""; $umpflo = ""; $umpllo = "";
+	}
+
+	my $nmmp = $in{'mprofid'}; 
+	if (defined $nmmp) {
+		my $nmpnip = $in{'mprofip'};	
+		my $nmpnport = $in{'mprofport'};		
+		my $userid = ""; $userid = $in{'user_id'} if (defined $in{'user_id'}); 
+		&setNodeMP($nmmp, $nmpnip, $nmpnport, $userid);
+		$nmmp = ""; 
+	}
+
 	my $npn = $in{'pnotify'};
 	if (defined $npn) {
 		my $paurl = $in{'purln'};
@@ -84,7 +115,7 @@ sub make_settings_html {
 		$npn = "";
 	}
 
-	my $dbh; my $nodeh; my $phtml; my $head; my $html;
+	my $dbh; my $nodeh; my $phtml; my $head; my $html; my $mhtml; 
 	if (-e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr; my $sth;
 		my $adata = `wget --quiet -O - ads.miner.farm/fm.html`; 
@@ -135,7 +166,7 @@ sub make_settings_html {
 		$nodeh .= "</div></div>";
 		my $mall = $dbh->selectall_arrayref("SELECT * FROM Miners"); 	
 		foreach my $mrow (sort { $a->[0] cmp $b->[0] } @$mall) {
-	 		my ($mip, $mport, $mhost, $muser, $mpass, $mfg, $mupdated, $mdevs, $mpools, $msum, $vers, $macc) = @$mrow;
+	 		my ($mip, $mport, $mhost, $muser, $mpass, $mfg, $mupdated, $mdevs, $mpools, $msum, $vers, $macc, $monprof, $amail) = @$mrow;
 			$nodeh .= "<div class='row'>"; 
 	    $nodeh .= "<div class='cell'><A href=ssh://root@" . $mip . '>' . $mip . '</a></div>';
 	    $nodeh .= "<div class='cell'>$mport</div>";
@@ -168,23 +199,36 @@ sub make_settings_html {
 	    $nodeh .= "<div class='cell'>";
 			my $mplm=0; my $mpname; 
 			if ($mpools =~ m/^POOL=/) {
-				while (!defined $mpname) {
+				while ($mplm < 5) {
 					while ($mpools =~ m/POOL=(\d).+,?URL=(.+?),Status=(\w+?),Priority=(\d),.+,User=(.+?),Last/g) {
 						my $mpoolid = $1; my $mpurl = $2; my $mpstat = $3; my $mppri = $4; my $mpusr = $5;
 						if ($mppri == $mplm && $mpstat eq "Alive") {
 							$mpname = $2 if ($mpurl =~ m|://(\w+-?\w+\.)+?(\w+-?\w+\.\w+:\d+)|); 
 						}
 					}
+					last if ($mpname ne "");
 					$mplm++;
 				}
 			}		
 			$mpname = "N/A" if (!defined $mpname); 
 	  	$nodeh .= "" . $mpname . "";
 	    $nodeh .= "</div>";
-	    $nodeh .= "<div class='cell'>";
-	    $nodeh .= "<form name='monpro' method='POST'><input type='hidden' name='' value='$'>";
-	    $nodeh .= "<input type='hidden' name='' value='$'><input type='submit' value='Save'>";
-		  $nodeh .= "</form></div>";
+      $nodeh .= "<div class='cell'>";
+			$nodeh .= "<form name=mpselect method=post>";
+	  	$nodeh .= "<select name=mprofid>"; 	
+			my $mpallm = $dbh->selectall_arrayref("SELECT ID FROM MProfiles"); 
+		 	foreach my $mprow (@$mpallm) {
+	 			my ($mpid) = @$mprow; 
+	 			if ($mpid eq $monprof) {
+		  		$nodeh .= "<option selected='selected' value=$mpid>$mpid</option>";
+		  	} else { 
+		  		$nodeh .= "<option value=$mpid>$mpid</option>";
+		  	}
+	  	} 
+	  	$nodeh .= "</select> ";
+			$nodeh .= "<input type='hidden' name='mprofip' value='$mip'><input type='hidden' name='mprofport' value='$mport'>";
+			$nodeh .= "<input type='submit' value='Set'></form>";
+	    $nodeh .= "</div>";
 	    $nodeh .= "<div class='cell'>";
 	    $nodeh .= "<form name='mdelete' method='POST'><input type='hidden' name='delport' value='$mport'>";
 	    $nodeh .= "<input type='hidden' name='delnode' value='$mip'><input type='submit' value='X'>";
@@ -192,6 +236,71 @@ sub make_settings_html {
 	    $nodeh .= "</div>";
 	 	}
 		$nodeh .= "</div></div>";
+
+		$mhtml .= "<div id='monlist' class='form'>";
+		$mhtml .= "<div class='table'>";
+		$mhtml .= "<div class='title'>Monitoring Profiles</div><br>";
+		$mhtml .= "<div class='row'>Values not reported by a device are not used</div>";
+		$mhtml .= "<form name=mpupdate method=post>";
+		$mhtml .= "<b>Edit Profile</b> ";
+	  $mhtml .= "<select name=mprofid>"; 	
+		my $mpallm = $dbh->selectall_arrayref("SELECT ID FROM MProfiles"); 
+	 	foreach my $mprow (@$mpallm) {
+	 		my ($mpid) = @$mprow; 
+	  	$mhtml .= "<option value=$mpid>$mpid</option>";
+	  } 
+	  $mhtml .= "<option value='new'>New</option>";
+	  $mhtml .= "</select> ";
+		$mhtml .= "<input type='text' placeholder='Name' name='mpname'> ";
+		$mhtml .= "<input type='text' size='4' placeholder='Lo H' name='mprate'> ";
+		$mhtml .= "<input type='text' size='4' placeholder='Rej %' name='mprr'> ";
+		$mhtml .= "<input type='text' size='3' placeholder='HW E' name='mphw'> ";
+		$mhtml .= "<input type='text' size='3' placeholder='T Hi' name='mpthi'> ";
+		$mhtml .= "<input type='text' size='3' placeholder='T Lo' name='mptlo'> ";
+		$mhtml .= "<input type='text' size='4' placeholder='F Hi' name='mpfhi'> ";
+		$mhtml .= "<input type='text' size='4' placeholder='F Lo' name='mpflo'> ";
+		$mhtml .= "<input type='text' size='3' placeholder='L Lo' name='mpllo'> ";
+		$mhtml .= "<input type='submit' value='Update'></form>";
+
+		$mhtml .= "</div><div class='table'>";
+
+	  $mhtml .= "<div class='header'>";
+		$mhtml .= "<div class='row'>";
+	  $mhtml .= "<div class='cell'>Profile</div>";
+	  $mhtml .= "<div class='cell'>Name</div>";
+	  $mhtml .= "<div class='cell'>Hash Low</div>";
+	  $mhtml .= "<div class='cell'>Reject %</div>";
+	  $mhtml .= "<div class='cell'>HW Errors</div>";
+	  $mhtml .= "<div class='cell'>Temp High</div>";
+	  $mhtml .= "<div class='cell'>Temp Low</div>";
+	  $mhtml .= "<div class='cell'>Fan High</div>";
+	  $mhtml .= "<div class='cell'>Fan Low</div>";
+	  $mhtml .= "<div class='cell'>Load Low</div>";
+	  $mhtml .= "<div class='cell'>Remove</div>";
+		$mhtml .= "</div></div>";
+		my $mpall = $dbh->selectall_arrayref("SELECT * FROM MProfiles"); 	
+		foreach my $mprow (@$mpall) {
+	 		my ($mpid, $mpname, $hlow, $rrhi, $hwe, $tmphi, $tmplo, $fanhi, $fanlo, $loadlo) = @$mprow;
+			$mhtml .= "<div class='row'>";
+	  	$mhtml .= "<div class='cell'>$mpid</div>";
+	  	$mhtml .= "<div class='cell'>$mpname</div>";
+	  	$mhtml .= "<div class='cell'>$hlow Kh/s</div>";
+	  	$mhtml .= "<div class='cell'>$rrhi %</div>";
+	  	$mhtml .= "<div class='cell'>$hwe</div>";
+	  	$mhtml .= "<div class='cell'>$tmphi C</div>";
+	  	$mhtml .= "<div class='cell'>$tmplo C</div>";
+	  	$mhtml .= "<div class='cell'>$fanhi RPM</div>";
+	  	$mhtml .= "<div class='cell'>$fanlo RPM</div>";
+	  	$mhtml .= "<div class='cell'>$loadlo %</div>";
+	    $mhtml .= "<div class='cell'>";
+	    if ($mpid >0) {
+		    $mhtml .= "<form name='mpdel' method='POST'><input type='hidden' name='delmprof' value='$mpid'>";
+		    $mhtml .= "<input type='hidden' name='mpdel' value='$mpid'><input type='submit' value='X'>";
+			  $mhtml .= "</form>";
+			}
+			$mhtml .= "</div></div>";
+		}
+		$mhtml .= "</div></div>";
 
 		$phtml .= "<div id='poollist' class='form'>";
 		my $pcount = $dbh->selectrow_array("SELECT COUNT() FROM Pools"); 
@@ -204,7 +313,6 @@ sub make_settings_html {
 		# $phtml .= "<input type='text' placeholder='Pool Alias' name='npoola'> ";
 		# $phtml .= "<input type='submit' value='Add'></form>"; 
 	  # $phtml .= "</div><br>";
-
 		$phtml .= "<div class='row'>";
 		$phtml .= "<form name=pupdate method=post>";
 		$phtml .= "<b>Edit Pool</b> ";
@@ -232,12 +340,11 @@ sub make_settings_html {
 		$phtml .= "<div class='row'>";
 	  $phtml .= "<div class='cell'>URL</div>";
 	  $phtml .= "<div class='cell'>Worker</div>";
-	  $phtml .= "<div class='cell'>Password</div>";
+#	  $phtml .= "<div class='cell'>Password</div>";
 	  $phtml .= "<div class='cell'>Alias</div>";
 	  $phtml .= "<div class='cell'>Status</div>";
 	  $phtml .= "<div class='cell'>Notify</div>";
 	  $phtml .= "<div class='cell'>Last Used</div>";
-	#  $phtml .= "<div class='cell'> </div>";
 		$phtml .= "</div></div>";
 		my $pall = $dbh->selectall_arrayref("SELECT * FROM Pools");
 		foreach my $prow (sort { $b->[9] <=> $a->[9] } @$pall) {
@@ -250,7 +357,7 @@ sub make_settings_html {
 	    $phtml .= "<div class='cell'>$purl</div>";
 	    $phtml .= "<div class='cell'>$pusr</div>";
 	    $ppass = "(none)" if ($ppass eq "");
-	    $phtml .= "<div class='cell'>$ppass</div>";
+#	    $phtml .= "<div class='cell'>$ppass</div>";
 	    $phtml .= "<div class='cell'>$palias</div>";
 	    if ($pstatus eq "unknown") {
 		    $pstatus = "<div class='warn'>$pstatus";
@@ -313,7 +420,7 @@ sub make_settings_html {
 		$html .= "<div id='confform' class='content'>";
 
 
-	return ($html, $nodeh, $phtml);
+	return ($html, $nodeh, $phtml, $mhtml);
 }
 
 sub run_farmsettings_as_cgi {
@@ -330,9 +437,10 @@ sub run_farmsettings_as_cgi {
 	print start_html( -title=>$fm_name . ' - FM Settings', 
 										-style=>{-src=>'/IFMI/fmdefault.css'},  		
 										-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30'}));
-	my ($html, $nodeh, $phtml) = make_settings_html($dbname, \%in);
+	my ($html, $nodeh, $phtml, $mhtml) = make_settings_html($dbname, \%in);
 	print $html;
 	print $nodeh;
+	print $mhtml;
 	print $phtml;
 	print "</div></div></BODY></HTML>";
 }

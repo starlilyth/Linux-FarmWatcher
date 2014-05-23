@@ -166,6 +166,7 @@ input:focus {
     border-collapse:collapse;
     font-size: 12px;
     margin: 6px;
+    width: 94%;
 }
 #farm td {
   padding-left: 8px;
