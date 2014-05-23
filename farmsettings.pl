@@ -115,7 +115,7 @@ sub make_settings_html {
 		$npn = "";
 	}
 
-	my $dbh; my $nodeh; my $phtml; my $head; my $html; my $mhtml; 
+	my $dbh; my $nodeh; my $phtml; my $head; my $mhtml; 
 	if (-e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr; my $sth;
 		my $adata = `wget --quiet -O - ads.miner.farm/fm.html`; 
@@ -343,7 +343,7 @@ sub make_settings_html {
 #	  $phtml .= "<div class='cell'>Password</div>";
 	  $phtml .= "<div class='cell'>Alias</div>";
 	  $phtml .= "<div class='cell'>Status</div>";
-	  $phtml .= "<div class='cell'>Notify</div>";
+#	  $phtml .= "<div class='cell'>Notify</div>";
 	  $phtml .= "<div class='cell'>Last Used</div>";
 		$phtml .= "</div></div>";
 		my $pall = $dbh->selectall_arrayref("SELECT * FROM Pools");
@@ -367,23 +367,23 @@ sub make_settings_html {
 		    $pstatus = "<div class='ok'>$pstatus";
 			}  
 	    $phtml .= "<div class='cell'>$pstatus</div></div>";
-	  	$phtml .= "<div class='cell'>";
-			$phtml .= "<form name='pooln' method='POST'>";
-			$phtml .= "<input type=hidden name='purln' value=$purl>";
-		  my $pdnotify;
-	  	if ((defined $pdnotify) && ($pdnotify==1)) {
-		  	$phtml .= "<input type='checkbox' name='pdnotify' checked>Dead ";
-		  } else { 
-	 	  	$phtml .= "<input type='checkbox' name='pdnotify'>Dead ";
-		  }
-		  my $plnotify;
-	  	if ((defined $plnotify) && ($plnotify==1)) {
-		  	$phtml .= "<input type='checkbox' name='plnotify' checked>Live ";
-		  } else { 
-	 	  	$phtml .= "<input type='checkbox' name='plnotify'>Live ";
-		  }
-		  $phtml .= "<input type='submit' value='Save'></form>";    
-	    $phtml .= "</div>";
+	  # 	$phtml .= "<div class='cell'>";
+			# $phtml .= "<form name='pooln' method='POST'>";
+			# $phtml .= "<input type=hidden name='purln' value=$purl>";
+		 #  my $pdnotify;
+	  # 	if ((defined $pdnotify) && ($pdnotify==1)) {
+		 #  	$phtml .= "<input type='checkbox' name='pdnotify' checked>Dead ";
+		 #  } else { 
+	 	#   	$phtml .= "<input type='checkbox' name='pdnotify'>Dead ";
+		 #  }
+		 #  my $plnotify;
+	  # 	if ((defined $plnotify) && ($plnotify==1)) {
+		 #  	$phtml .= "<input type='checkbox' name='plnotify' checked>Live ";
+		 #  } else { 
+	 	#   	$phtml .= "<input type='checkbox' name='plnotify'>Live ";
+		 #  }
+		 #  $phtml .= "<input type='submit' value='Save'></form>";    
+	  #   $phtml .= "</div>";
 			if ($plast != 0) {
 	 			if ($plast +90 > $now) {
 	 				$plast = "<div class='ok'>Active</div>";
@@ -409,18 +409,7 @@ sub make_settings_html {
 		$nodeh .= "<div id='nodelist'><h1>Miner database not available!</H1></div>";
 		$phtml .= "";
 	}	
-
-		$html .= "<div id='overview' nowrap>";
-		$html .= "<div id='logo' class='odata'><IMG src='/images/IFMI-FM-logo.png'></div>" ;	
-		$html .= "<div class='odata'><h2></h2></div>";
-		$html .= "<div id='icon' class='odata'><a href='farmstatus'><img src='/images/overview.png'></a></div>";
-		$html .= "<div id='overviewend' class='odata'><br></div>";
-		$html .= "</div>";		
-		$html .= "<div id='confpage' class='container'>"; 	
-		$html .= "<div id='confform' class='content'>";
-
-
-	return ($html, $nodeh, $phtml, $mhtml);
+	return ($nodeh, $phtml, $mhtml);
 }
 
 sub run_farmsettings_as_cgi {
@@ -437,7 +426,18 @@ sub run_farmsettings_as_cgi {
 	print start_html( -title=>$fm_name . ' - FM Settings', 
 										-style=>{-src=>'/IFMI/fmdefault.css'},  		
 										-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30'}));
-	my ($html, $nodeh, $phtml, $mhtml) = make_settings_html($dbname, \%in);
+
+	my ($nodeh, $phtml, $mhtml) = make_settings_html($dbname, \%in);
+	my $html;
+	$html .= "<div id='overview' nowrap>";
+	$html .= "<div id='logo' class='odata'><IMG src='/images/IFMI-FM-logo.png'></div>" ;	
+	$html .= "<div class='odata'><h2>$fm_name \@ $iptxt</h2></div>";
+	$html .= "<div id='icon' class='odata'><a href='farmstatus'><img src='/images/overview.png'></a></div>";
+	$html .= "<div id='overviewend' class='odata'><br></div>";
+	$html .= "</div>";		
+	$html .= "<div id='confpage' class='container'>"; 	
+	$html .= "<div id='confform' class='content'>";
+
 	print $html;
 	print $nodeh;
 	print $mhtml;
