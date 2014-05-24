@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-#    This file is part of IFMI PoolManager.
+#    This file is part of IFMI FarmWatcher.
 #
 #    PoolManager is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -11,12 +11,8 @@
 use warnings;
 use strict;
 
-#require '/opt/ifmi/fm-common.pl';
 require '/opt/ifmi/fm-getdata.pl';
 #require '/opt/ifmi/pmnotify.pl';
-
-#my $conf = &getConfig;
-#my %conf = %{$conf};
 
 use Proc::PID::File;
 if (Proc::PID::File->running()) {
