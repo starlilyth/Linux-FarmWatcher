@@ -48,7 +48,9 @@ sub doInstall {
 	require IO::Socket::INET;
 	require Proc::PID::File;
 	require Proc::Daemon;
+	require Proc::ProcessTable;
 	require DBI;
+	require DBD::SQLite;
 	print " ..all set!\n" if ($flag ne "-q");
 	$instlog .= "Perl test passed.";
 
@@ -74,7 +76,9 @@ sub doInstall {
       copy "run-farmwatcher.pl", $appdir;
     	copy "fm-getdata.pl", $appdir;
     	copy "fm-listener", $appdir;
-    	`cp images/ $webdir`;
+			make_path $webdir . '/IFMI/themes' ;
+    	`cp fmdefault.css $webdir/IFMI/themes`;
+    	`cp -r images/ $webdir`;
     	`chmod 0755 $appdir/*.pl`; #because windows f's up the permissions. wtf. 
     	`chmod 0755 $appdir/fm-listener`; #because windows
     	`chmod 0755 $cgidir/*.pl`; #because windows
@@ -177,7 +181,8 @@ sub doInstall {
 			}
 			`service apache2 restart` if ($restart > 0);
 		}
-		print "Done! Thank you for flying IFMI!\n" if ($flag ne "-q");
+
+		print "Done! STOP FARMVIEW IF YOU HAVE IT! Thank you for flying IFMI!\n" if ($flag ne "-q");
 	} else { 
 		print "Cant determine apache user, Bailing out!\n";
 		$instlog .= "unknown apache user, bailed out.\n";

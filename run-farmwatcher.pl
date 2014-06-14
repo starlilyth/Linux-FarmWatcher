@@ -23,7 +23,7 @@ while ($continue) {
 	&dolistener;
  # Get the ad
   `wget --quiet -T 10 -O /opt/ifmi/adata http://ads.miner.farm/pm.html`;
-	sleep 30;
+	sleep 60;
 }
 
 sub dolistener {
