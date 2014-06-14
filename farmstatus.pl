@@ -3,7 +3,6 @@
 #
 
 package farmstatus;
-
 use warnings;
 use strict;
 use DBI;
@@ -26,7 +25,7 @@ sub make_farm_html {
 	my $problemnodes = 0; my $oknodes = 0;
 	my $problempools = 0; my $okpools = 0;	
 	my $html = "<div id='farm' class='content'>"; 
-	my $adata = `wget --quiet -O - ads.miner.farm/fm.html`; 
+	my $adata = `cat /opt/ifmi/adata`; 
 	$html .= "<div class='cell' id=adblock>$adata</td></div><br>" if ($adata ne "");
 	my $head;	my $ndhtml = "<div id='node' class='content'>";
 
@@ -551,7 +550,7 @@ sub make_farm_html {
 		# Overview
 	
 		$head = "<div id='overview' nowrap>";	
-			$head .= '<div id="logo" class="odata"><a href="https://miner.farm/"><IMG src="/images/miner.farm.logo-revsm.png"></a></div>';	
+			$head .= '<div id="logo" class="odata"><a href="https://miner.farm/"><IMG src="/images/IFMI-FM-logo.png"></a></div>';	
 		
 			$head .= "<div id='overviewhash' class='odata'>";
 			$thrh = sprintf("%.2f", $tothash / 1000 );

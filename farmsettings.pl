@@ -118,7 +118,7 @@ sub make_settings_html {
 	my $dbh; my $nodeh; my $phtml; my $head; my $mhtml; 
 	if (-e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr; my $sth;
-		my $adata = `wget --quiet -O - ads.miner.farm/fm.html`; 
+		my $adata = `cat /opt/ifmi/adata`; 
 		$nodeh .= "<div class='cell' id=adblock>$adata</td></div><br>" if ($adata ne "");
 		$nodeh .= "<div id='nodelist' class='form'>";
 		my $ncount = $dbh->selectrow_array("SELECT COUNT() FROM Miners"); 
@@ -182,11 +182,12 @@ sub make_settings_html {
 	    	}
 	    } else { $mupdated = "<div class='warn'>never"; }
 	    $nodeh .= "<div class='cell'>$mupdated</div></div>";
-	    $macc = "<div class='ok'>R W" if ($macc eq "S");
-	    $macc = "<div class='warn'>R O" if ($macc eq "E");
-	    $macc = "<div class='warn'>U<small>navailable</small>" if ($macc eq "U");
-	    $macc = "<div class='error'>F<small>ailed<br>connection</small>" if ($macc eq "F");
-	    $nodeh .= "<div class='cell'>$macc</div></div>";
+	    my $macch = "<div class='warn'>Unknown"; 
+	    $macch = "<div class='ok'>R W" if ($macc eq "S");
+	    $macch = "<div class='warn'>R O" if ($macc eq "E");
+	    $macch = "<div class='warn'>U<small>navailable</small>" if ($macc eq "U");
+	    $macch = "<div class='error'>F<small>ailed<br>connection</small>" if ($macc eq "F");
+	    $nodeh .= "<div class='cell'>$macch</div></div>";
 
 			my $mname = ""; my $mvers = "";
 			if ($vers =~ m/Miner=(\w+)?\s?(\d+\.\d+\.\d+),API/) {

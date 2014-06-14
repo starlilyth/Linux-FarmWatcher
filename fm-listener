@@ -1,0 +1,61 @@
+#!/usr/bin/perl
+#    This file is part of IFMI FarmManager.	
+#
+use warnings;
+use strict;
+use IO::Select;
+use IO::Socket::INET;
+use Proc::PID::File;
+use DBI;
+
+if (Proc::PID::File->running()) {
+  # one at a time, gentlemen
+  exit(0);
+}
+
+my $verbose = 1;
+my $listenport = 54545;
+#if (defined($conf{settings}{listen_port})) {
+#  $listenport = $conf{settings}{listen_port};
+#}
+my $socket = IO::Socket::INET->new(Proto => 'udp', Type => SOCK_DGRAM, LocalPort => $listenport, Blocking  => 0) 
+or die "Cannot open socket.";
+
+my $sel = IO::Select->new();
+$sel->add($socket);
+
+while($socket) {
+  while(my @ready = $sel->can_read(0)) {
+    foreach my $fh (@ready) {
+      my $ip = $socket->recv(my $data, 8000);
+      my ($port, $ipaddr) = sockaddr_in($socket->peername);
+      my $host = inet_ntoa($ipaddr); 
+      my $mname;
+      if ($data =~ m/^(.*?)\|(.*?)\|(.*)$/) {
+        $mname = $1;
+      }
+      if (defined $verbose) {
+        print "recvd packet from $host $mname\n";
+      }      
+      updateMiner($host,$mname);
+    }     
+  } 
+ sleep(2);
+}
+
+sub updateMiner {
+  my ($host,$mname) = @_;
+  my $dbname = "/opt/ifmi/fm.db"; 
+  my $dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
+  if (-e $dbname) {
+    my $mcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ?", undef, $host);
+    if (!defined $mcheck) {
+      $dbh->do("INSERT INTO Miners(IP, Name, Port, Mgroup, Updated) VALUES ('$host', '$mname', '4028', 'AUTO DISCOVERY', '0')");
+      if (defined $verbose) {
+        print "added $host $mname\n";
+      }      
+    }
+  }
+}
+
+
