@@ -51,6 +51,7 @@ sub doInstall {
 	require Proc::ProcessTable;
 	require DBI;
 	require DBD::SQLite;
+	require JSON;
 	print " ..all set!\n" if ($flag ne "-q");
 	$instlog .= "Perl test passed.";
 
@@ -72,15 +73,15 @@ sub doInstall {
 			copy "farmsettings.pl", $cgidir;
     	`ln -s $cgidir/farmsettings.pl $cgidir/farmsettings`;
     	copy "favicon.ico", $webdir;
-    	copy "fm-common.pl", $appdir;
+    	copy "fw-common.pl", $appdir;
       copy "run-farmwatcher.pl", $appdir;
-    	copy "fm-getdata.pl", $appdir;
-    	copy "fm-listener", $appdir;
+    	copy "fw-getdata.pl", $appdir;
+    	copy "fw-listener", $appdir;
 			make_path $webdir . '/IFMI/themes' ;
     	`cp fmdefault.css $webdir/IFMI/themes`;
     	`cp -r images/ $webdir`;
     	`chmod 0755 $appdir/*.pl`; #because windows f's up the permissions. wtf. 
-    	`chmod 0755 $appdir/fm-listener`; #because windows
+    	`chmod 0755 $appdir/fw-listener`; #because windows
     	`chmod 0755 $cgidir/*.pl`; #because windows
     	$instlog .= "files copied.\n";
 		} else { 

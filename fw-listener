@@ -1,0 +1,87 @@
+#!/usr/bin/perl
+#    This file is part of IFMI FarmManager.	
+#
+use warnings;
+use strict;
+use IO::Select;
+use IO::Socket::INET;
+use Proc::PID::File;
+use DBI;
+use JSON;
+
+if (Proc::PID::File->running()) {
+  # one at a time, gentlemen
+  exit(0);
+}
+
+my $verbose;
+my $listenport = 54545;
+#if (defined($conf{settings}{listen_port})) {
+#  $listenport = $conf{settings}{listen_port};
+#}
+my $socket = IO::Socket::INET->new(Proto => 'udp', Type => SOCK_DGRAM, LocalPort => $listenport, Blocking  => 0) 
+or die "Cannot open socket.";
+
+my $sel = IO::Select->new();
+$sel->add($socket);
+
+while($socket) {
+  while(my @ready = $sel->can_read(0)) {
+    foreach my $fh (@ready) {
+      my $ip = $socket->recv(my $data, 8000);
+      my ($port, $ipaddr) = sockaddr_in($socket->peername);
+      my $host = inet_ntoa($ipaddr); 
+      my $mname; my $mfgroup; my $mver; my @summary;
+      if ($data =~ m/^(.+?)\|(.+?)\|/) {
+        $mname = $1; $mfgroup = $2; 
+      }
+      if ($data =~ m/ver\:(.+?\|)/) {
+        $mver = $1
+      }
+      while ($data =~ m/sum\:(\{.+?\})/g)
+      {
+        push(@summary, decode_json $1);
+      }
+      print "recvd packet from $host $mname\n" if (defined $verbose);      
+      updateMiner($host,$mname,$mfgroup,$mver,@summary);
+    }     
+  } 
+ sleep(2);
+}
+
+#Devices, Pools, Summary, Version
+
+sub updateMiner {
+  my ($host,$mname,$mfgroup,$mver,@summary) = @_;
+  my $dbname = "/opt/ifmi/fm.db"; my $now = time;
+  if (-e $dbname) {
+    my $msum;
+    if (@summary) {
+      for (my $i=0;$i<@summary;$i++) {
+        $msum .= "Elapsed=" . ${$summary[$i]}{'elapsed'} . ",";
+        $msum .= "MHS av=" . ${$summary[$i]}{'hashavg'} . ",";
+        $msum .= "Work Utility=" . ${$summary[$i]}{'work_utility'} . ",";
+        $msum .= "Hardware Errors=" . ${$summary[$i]}{'hardware_errors'} . ",";
+        my $mrat;
+        my $macc = ${$summary[$i]}{'shares_accepted'};
+        my $mrej = ${$summary[$i]}{'shares_invalid'};
+          if ($mrej != 0) {
+            $mrat =  sprintf("%.2f", $mrej / ($macc + $mrej)*100);
+          } else { $mrat = "0.00"; }
+        $msum .= "Device Rejected\%=" . $mrat . ",";
+      }
+    }
+    my $dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
+    my $mcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port = 'UDP'", undef, $host);
+    if (!defined $mcheck) {
+      $dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access, MonProf, Amail) VALUES ('$host', 'UDP', '$mname', '', '', '$mfgroup', '$now', '', '', '$msum', '$mver', 'D', '0', 'N')");
+      print "added $host $mname\n" if (defined $verbose);     
+    } else {
+      my $sth = $dbh->prepare("UPDATE Miners SET Version= ?, Summary= ?, Updated= ? WHERE IP= ? AND Port= 'UDP' ");
+      $sth->execute($mver, $msum, $now, $host); $sth->finish();
+      print "updated $host $mname\n" if (defined $verbose);     
+    }
+  }
+}
+
+

@@ -10,7 +10,7 @@
 
 use warnings;
 use strict;
-require '/opt/ifmi/fm-getdata.pl';
+require '/opt/ifmi/fw-getdata.pl';
 use Proc::Daemon;
 use Proc::PID::File;
 
@@ -22,18 +22,18 @@ while ($continue) {
 	&doGetData;
 	&dolistener;
  # Get the ad
-  `wget --quiet -T 10 -O /opt/ifmi/adata http://ads.miner.farm/pm.html`;
-	sleep 60;
+  `wget --quiet -T 10 -O /opt/ifmi/fwadata http://ads.miner.farm/pm.html`;
+	sleep 30;
 }
 
 sub dolistener {
-  my $fcheck = `/bin/ps -eo command | /bin/grep -Ec /opt/ifmi/fm-listener\$`;
+  my $fcheck = `/bin/ps -eo command | /bin/grep -Ec /opt/ifmi/fw-listener\$`;
   if ($fcheck == 0) {
     my $pid = fork();
     if (not defined $pid) {
       die "out of resources";
     } elsif ($pid == 0) {
-	    exec('/opt/ifmi/fm-listener');
+	    exec('/opt/ifmi/fw-listener');
     }
   }
 }

@@ -25,7 +25,7 @@ sub make_farm_html {
 	my $problemnodes = 0; my $oknodes = 0;
 	my $problempools = 0; my $okpools = 0;	
 	my $html = "<div id='farm' class='content'>"; 
-	my $adata = `cat /opt/ifmi/adata`; 
+	my $adata = `cat /opt/ifmi/fwadata`; 
 	$html .= "<div class='cell' id=adblock>$adata</td></div><br>" if ($adata ne "");
 	my $head;	my $ndhtml = "<div id='node' class='content'>";
 
@@ -53,7 +53,7 @@ sub make_farm_html {
 				my @monprof = $dbh->selectrow_array("SELECT * FROM MProfiles WHERE ID= ?", undef, $mprof); 	
 				my ($mpid, $mpname, $hlow, $rrhi, $hwe, $tmphi, $tmplo, $fanhi, $fanlo, $loadlo) = @monprof; 
 	 			$locnodes++; $tnodes++; my @nodemsg; my $problems = 0; my $dcount = 0; my $devtype = ""; my $notemp = 0;
-	 			while ($devices =~ m/\b(GPU|ASC|PGA)\b=\d+/g) { $locdevs++; $dcount++; }
+	 			if (defined $devices) { while ($devices =~ m/\b(GPU|ASC|PGA)\b=\d+/g) { $locdevs++; $dcount++; } }
 				my $errspan = $dcount*4;
 				my $nodeurl = "?";
 				$npage = $tlocs + $npage; 
@@ -69,7 +69,7 @@ sub make_farm_html {
 	 				$ndata .= '<A href="' . $nodeurl . '"><div>' . $mid . '</div></a></td>';
 				}
 				my $checkin = ($now - $updated);
-				if ($checkin > 65) {
+				if ($checkin > 120) {
 					$locproblems++;	$problemnodes++; $totproblems++;
 	  			if ($updated == 0) {
 						if ($npage == $shownode) {
@@ -105,7 +105,7 @@ sub make_farm_html {
 						$nddata .= "<div class='row'><div class='cell'>$loc</div>";
 					}
 
-					my $pname = ""; my $pdata;
+					my $pname = "N/A"; my $pdata;
 	 				if ($pools ne "None") {
 	 				 	my $plm=0; 
 		 				while ($plm < 5) {
@@ -115,10 +115,9 @@ sub make_farm_html {
 									$pname = $2 if ($purl =~ m|://(\w+-?\w+\.)+?(\w+-?\w+\.\w+:\d+)|); 
 								}
 							}
-							last if ($pname ne "");
+							last if ($pname ne "N/A");
 							$plm++;
 						}
-						$pname = "N/A" if (! defined $pname); 
 	 		    	$pdata .= "<td>" . $pname . "</td>";	 		    
 						if ($npage == $shownode) {
 							while ($pools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+\.\d+),.+,Pool Rejected%=(\d+\.\d+),/g) {
@@ -451,14 +450,14 @@ sub make_farm_html {
 					$nhead .= "<TD>WU</TD>";
 					$nhead .= "<TD>Rej</TD>";
 					$nhead .= "<TD>HW</TD>";
-		 			$nhead .= "<TD colspan=$dcount>$devtype Hashrate";
+		 			$nhead .= "<TD colspan=$dcount>$devtype Hashrate" if ($dcount > 0);
 		 			$nhead .= "s" if ($dcount > 1); 
 					if ($notemp > 0) {
 		 				$nhead .= "<TD colspan=$dcount>Temperature";
 		 				$nhead .= "s" if ($dcount > 1); 
 		 				$nhead .= "</TD>";
 		 			}
-			 		if (($devices =~ m/^GPU=/) && ($checkin < 65)){
+			 		if ((defined $devices && $devices =~ m/^GPU=/) && ($checkin < 65)){
 		 				$nhead .= "<TD colspan=$dcount>Fan Speed";
 			 			$nhead .= "s" if ($dcount > 1); 
 			 			$nhead .= "</TD>";

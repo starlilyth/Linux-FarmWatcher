@@ -118,7 +118,7 @@ sub make_settings_html {
 	my $dbh; my $nodeh; my $phtml; my $head; my $mhtml; 
 	if (-e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr; my $sth;
-		my $adata = `cat /opt/ifmi/adata`; 
+		my $adata = `cat /opt/ifmi/fwadata`; 
 		$nodeh .= "<div class='cell' id=adblock>$adata</td></div><br>" if ($adata ne "");
 		$nodeh .= "<div id='nodelist' class='form'>";
 		my $ncount = $dbh->selectrow_array("SELECT COUNT() FROM Miners"); 
@@ -184,13 +184,14 @@ sub make_settings_html {
 	    $nodeh .= "<div class='cell'>$mupdated</div></div>";
 	    my $macch = "<div class='warn'>Unknown"; 
 	    $macch = "<div class='ok'>R W" if ($macc eq "S");
+	    $macch = "<div class='warn'>R O" if ($macc eq "D");
 	    $macch = "<div class='warn'>R O" if ($macc eq "E");
 	    $macch = "<div class='warn'>U<small>navailable</small>" if ($macc eq "U");
 	    $macch = "<div class='error'>F<small>ailed<br>connection</small>" if ($macc eq "F");
 	    $nodeh .= "<div class='cell'>$macch</div></div>";
 
 			my $mname = ""; my $mvers = "";
-			if ($vers =~ m/Miner=(\w+)?\s?(\d+\.\d+\.\d+),API/) {
+			if (defined $vers && $vers =~ m/Miner=(\w+)?\s?(\d+\.\d+\.\d+),API/) {
 				$mname = $1 if (defined $1);
 				$mvers = $2; 
 			} else {
@@ -199,7 +200,7 @@ sub make_settings_html {
 	    $nodeh .= "<div class='cell'>$mname $mvers</div>";
 	    $nodeh .= "<div class='cell'>";
 			my $mplm=0; my $mpname; 
-			if ($mpools =~ m/^POOL=/) {
+			if (defined $mpools && $mpools =~ m/^POOL=/) {
 				while ($mplm < 5) {
 					while ($mpools =~ m/POOL=(\d).+,?URL=(.+?),Status=(\w+?),Priority=(\d),.+,User=(.+?),Last/g) {
 						my $mpoolid = $1; my $mpurl = $2; my $mpstat = $3; my $mppri = $4; my $mpusr = $5;
@@ -220,7 +221,7 @@ sub make_settings_html {
 			my $mpallm = $dbh->selectall_arrayref("SELECT ID FROM MProfiles"); 
 		 	foreach my $mprow (@$mpallm) {
 	 			my ($mpid) = @$mprow; 
-	 			if ($mpid eq $monprof) {
+	 			if ((defined $monprof) && ($mpid eq $monprof)) {
 		  		$nodeh .= "<option selected='selected' value=$mpid>$mpid</option>";
 		  	} else { 
 		  		$nodeh .= "<option value=$mpid>$mpid</option>";

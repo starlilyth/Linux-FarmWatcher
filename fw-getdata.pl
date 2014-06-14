@@ -9,8 +9,7 @@ use Proc::ProcessTable;
 require '/opt/ifmi/fm-common.pl';
 
 sub doGetData {
-	my $dbname; my $dbh;
-	if (defined $_[0]) { $dbname = "/opt/minerfarm/$_[0]/fm.db"; } else { $dbname = "/opt/ifmi/fm.db"; }  
+	my $dbh; my $dbname = "/opt/ifmi/fm.db"; 
 	my $now = time;
 	if (! -e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
@@ -31,7 +30,7 @@ sub doGetData {
 	&getMinerData($dbname);
 	sleep 6;
 	&updatePools($dbname);
-	sleep 10;
+	sleep 6;
 	for my $p (@{new Proc::ProcessTable->table}){
 		 kill 9, $p->pid if($p->ppid == $$);
 	}
@@ -40,11 +39,10 @@ sub doGetData {
 sub getMinerData {
 	my ($dbname) = @_; my $now = time;
 	my $dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
-	my $all = $dbh->selectall_arrayref("SELECT IP, Port, Updated FROM Miners");
-	my $pid;
+	my $all = $dbh->selectall_arrayref("SELECT IP, Port, Access, Updated FROM Miners");
 	foreach my $row (@$all) {
-	  my ($ip, $port, $updated) = @$row;
-		$SIG{CHLD} = 'IGNORE';
+	  my ($ip, $port, $access, $updated) = @$row;
+		my $pid; $SIG{CHLD} = 'IGNORE';
 		next if $pid = fork; die "fork failed: $!" unless defined $pid;
 		if ($pid == 0) {
 			my $cdbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr; my $sth; 
@@ -66,14 +64,18 @@ sub getMinerData {
 					$sth = $cdbh->prepare("UPDATE Miners SET Access= ?, Version= ?, Summary= ?, Pools= ?, Devices= ?, Updated= ? WHERE IP= ? AND Port= ? ");
 					$sth->execute($acheck, $nvers, $nsum, $poolsd, $devsd, $now, $ip, $port); $sth->finish();
 		  	}
-			} elsif (!defined $acheck || $acheck eq "") {
-					$acheck = "U";
-					$sth = $cdbh->prepare("UPDATE Miners SET Access= ? WHERE IP= ? AND Port= ? ");
-					$sth->execute($acheck, $ip, $port); $sth->finish();
-			} elsif ($acheck eq "socket failed") {
-					$acheck = "F";
-					$sth = $cdbh->prepare("UPDATE Miners SET Access= ? WHERE IP= ? AND Port= ? ");
-					$sth->execute($acheck, $ip, $port); $sth->finish();
+		  } else { 
+		  	if ($access ne "D") {
+					if (!defined $acheck || $acheck eq "") {
+							$acheck = "U";
+							$sth = $cdbh->prepare("UPDATE Miners SET Access= ? WHERE IP= ? AND Port= ? ");
+							$sth->execute($acheck, $ip, $port); $sth->finish();
+					} elsif ($acheck eq "socket failed") {
+							$acheck = "F";
+							$sth = $cdbh->prepare("UPDATE Miners SET Access= ? WHERE IP= ? AND Port= ? ");
+							$sth->execute($acheck, $ip, $port); $sth->finish();
+					}
+				}
 			}
 			$cdbh->disconnect();
 			exit 0;
