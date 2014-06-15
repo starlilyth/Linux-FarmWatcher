@@ -77,8 +77,8 @@ sub doInstall {
       copy "run-farmwatcher.pl", $appdir;
     	copy "fw-getdata.pl", $appdir;
     	copy "fw-listener", $appdir;
-			make_path $webdir . '/IFMI/themes' ;
-    	`cp fmdefault.css $webdir/IFMI/themes`;
+			make_path $webdir . '/IFMI/' ;
+    	`cp fmdefault.css $webdir/IFMI/`;
     	`cp -r images/ $webdir`;
     	`chmod 0755 $appdir/*.pl`; #because windows f's up the permissions. wtf. 
     	`chmod 0755 $appdir/fw-listener`; #because windows
