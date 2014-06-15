@@ -38,8 +38,9 @@ while($socket) {
       if ($data =~ m/ver\:(.+?\|)/) {
         $mver = $1;
       }
-      while ($data =~ m/(\d+?)\:(\{.+?\})/g) {
-        push(@gpus, decode_json $2);
+#      print "$data\n";
+      while ($data =~ m/\|\d+\:(\{.+?\})/g) {
+        push(@gpus, decode_json $1);
       }
       while ($data =~ m/pool\:(\{.+?\})/g) {
         push(@pools, decode_json $1);
@@ -86,15 +87,39 @@ sub updateMiner {
         $mpools .= "\n";
       }
     }
+    my $mgpus = ""; 
+    if (@gpus ne "") {
+      for (my $i=0;$i<@gpus;$i++) {    
+        $mgpus .= "GPU=$i,";
+        $mgpus .= "Status=" . $gpus[$i]{'status'} . ",";
+        $mgpus .= "MHS 5s=" . $gpus[$i]{'hashrate'}/1000 . ",";
+        $mgpus .= "Pool=" . $gpus[$i]{'pool_url'} . ",";
+        $mgpus .= "Accepted=" . $gpus[$i]{'shares_accepted'} . ",";
+        $mgpus .= "Rejected=" . $gpus[$i]{'shares_invalid'} . ",";
+        $mgpus .= "Hardware Errors=" . $gpus[$i]{'hardware_errors'} . ",";
+        $mgpus .= "Temperature=" . $gpus[$i]{'current_temp_0_c'} . ",";
+        $mgpus .= "Fan Speed=" . $gpus[$i]{'fan_rpm_c'} . ",";
+        $mgpus .= "Fan Percent=" . $gpus[$i]{'fan_speed_c'} . ",";
+        $mgpus .= "Intensity=" . $gpus[$i]{'intensity'} . ",";
+        $mgpus .= "GPU Clock=" . $gpus[$i]{'current_core_clock_c'} . ",";
+        $mgpus .= "Memory Clock=" . $gpus[$i]{'current_mem_clock_c'} . ",";
+        $mgpus .= "GPU Voltage=" . $gpus[$i]{'current_core_voltage_c'} . ",";
+        $mgpus .= "\n";
+      }
+    }
     my $dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
-    my $mcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port = 'UDP'", undef, $host);
-    if (!defined $mcheck) {
-      $dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access, MonProf, Amail) VALUES ('$host', 'UDP', '$mname', '', '', '$mfgroup', '$now', '', '$mpools', '$msum', '$mver', 'D', '0', 'N')");
-      print "added $host $mname\n" if (defined $verbose);     
-    } else {
-      my $sth = $dbh->prepare("UPDATE Miners SET Version= ?, Pools= ?, Summary= ?, Updated= ? WHERE IP= ? AND Port= 'UDP' ");
-      $sth->execute($mver, $mpools, $msum, $now, $host); $sth->finish();
-      print "updated $host $mname\n" if (defined $verbose);     
+    my $nmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port = 'UDP'", undef, $host);
+    my $tmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port != 'UDP'", undef, $host);
+
+    if (!defined $tmcheck) {
+      if (!defined $nmcheck) {
+        $dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access, MonProf, Amail) VALUES ('$host', 'UDP', '$mname', '', '', '$mfgroup', '$now', '$mgpus', '$mpools', '$msum', '$mver', 'D', '0', 'N')");
+        print "added $host $mname\n" if (defined $verbose);     
+      } else {
+        my $sth = $dbh->prepare("UPDATE Miners SET Version= ?, Devices= ?, Pools= ?, Summary= ?, Updated= ? WHERE IP= ? AND Port= 'UDP' ");
+        $sth->execute($mver, $mgpus, $mpools, $msum, $now, $host); $sth->finish();
+        print "updated $host $mname\n" if (defined $verbose);     
+      }
     }
   }
 }
