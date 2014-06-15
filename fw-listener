@@ -82,7 +82,7 @@ sub updateMiner {
         $mpools .= "POOL=" . ${$pools[$i]}{'poolid'} . ","; 
         $mpools .= "URL=" . ${$pools[$i]}{'url'} . ",";
         $mpools .= "Status=" . ${$pools[$i]}{'status'} . ",";
-        $mpools .= "Priority=" . ${$pools[$i]}{'priority'} . ",";
+        $mpools .= "Priority=" . ${$pools[$i]}{'priority'} . ",.,";
         $mpools .= "User=" . ${$pools[$i]}{'user'} . ",";
         $mpools .= "\n";
       }
@@ -110,7 +110,6 @@ sub updateMiner {
     my $dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
     my $nmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port = 'UDP'", undef, $host);
     my $tmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port != 'UDP'", undef, $host);
-
     if (!defined $tmcheck) {
       if (!defined $nmcheck) {
         $dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access, MonProf, Amail) VALUES ('$host', 'UDP', '$mname', '', '', '$mfgroup', '$now', '$mgpus', '$mpools', '$msum', '$mver', 'D', '0', 'N')");

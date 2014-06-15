@@ -202,7 +202,7 @@ sub make_settings_html {
 			my $mplm=0; my $mpname; 
 			if (defined $mpools && $mpools =~ m/^POOL=/) {
 				while ($mplm < 5) {
-					while ($mpools =~ m/POOL=(\d).+,?URL=(.+?),Status=(\w+?),Priority=(\d),.+,User=(.+?),Last/g) {
+					while ($mpools =~ m/POOL=(\d).+,?URL=(.+?),Status=(\w+?),Priority=(\d),.+,User=(.+?),/g) {
 						my $mpoolid = $1; my $mpurl = $2; my $mpstat = $3; my $mppri = $4; my $mpusr = $5;
 						if ($mppri == $mplm && $mpstat eq "Alive") {
 							$mpname = $2 if ($mpurl =~ m|://(\w+-?\w+\.)+?(\w+-?\w+\.\w+:\d+)|); 

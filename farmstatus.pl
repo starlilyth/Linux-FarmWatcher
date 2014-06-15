@@ -460,7 +460,7 @@ sub make_farm_html {
 		 				$nhead .= "s" if ($dcount > 1); 
 		 				$nhead .= "</TD>";
 		 			}
-			 		if ((defined $devices && $devices =~ m/^GPU=/) && ($checkin < 65)){
+			 		if ((defined $devices && $devtype eq "GPU") && ($checkin < 120)){
 		 				$nhead .= "<TD colspan=$dcount>Fan Speed";
 			 			$nhead .= "s" if ($dcount > 1); 
 			 			$nhead .= "</TD>";
