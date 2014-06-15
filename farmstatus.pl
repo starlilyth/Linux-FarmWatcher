@@ -14,7 +14,7 @@ our @EXPORT = qw(make_farm_html);
 sub make_farm_html {
 	my ($dbname, $shownode) = @_;
 
-	require '/opt/ifmi/fm-common.pl';
+	require '/opt/ifmi/fw-common.pl';
 	my $now = time;
 	my $dbh;
 	my $tothash = 0; my $thrh; my $totproblems = 0;

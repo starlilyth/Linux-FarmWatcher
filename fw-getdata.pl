@@ -6,7 +6,7 @@ use strict;
 use IO::Socket::INET;
 use DBI;
 use Proc::ProcessTable;
-require '/opt/ifmi/fm-common.pl';
+require '/opt/ifmi/fw-common.pl';
 
 sub doGetData {
 	my $dbh; my $dbname = "/opt/ifmi/fm.db"; 

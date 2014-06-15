@@ -16,7 +16,7 @@ our @EXPORT = qw(make_settings_html);
 sub make_settings_html {
 	my ($dbname, $in) = @_;
 	my %in = %{$in};	
-	require '/opt/ifmi/fm-common.pl';
+	require '/opt/ifmi/fw-common.pl';
 
 	my $apooln = $in{'npoolurl'};
 	if (defined $apooln) {
