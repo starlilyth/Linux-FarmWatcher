@@ -91,8 +91,14 @@ sub updatePools {
 		my ($mpools, $mdevs, $mupdated) = @$mprow;
 		if (($mupdated+90 > $now) && (defined $mpools && $mpools ne "") && (defined $mdevs && $mdevs ne "")) {
 			my $mpoid; my $mpurl; my $mpstat; my $mppri; my $mpuser; my $mpdiff; my $mprej;  
-			while ($mpools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+\.\d+),.+,Pool Rejected%=(\d+\.\d+),/g) {
-				$mpoid = $1; $mpurl = $2; $mpstat = $4; $mppri = $5; $mpuser = $6; $mpdiff = $7; $mprej = $8; 
+			while ($mpools =~ m/POOL=(\d),(.+)\n/g) {
+				my $mpoid = $1; my $pooldata = $2; 
+				my $mpurl = $1 if ($pooldata =~ m/URL=(.+?\/\/.+?:\d+?),/);
+				my $mpstat = $1 if ($pooldata =~ m/Status=(\w+?),/);
+				my $mppri = $1 if ($pooldata =~ m/Priority=(\d),/);
+				my $mpuser = $1 if ($pooldata =~ m/User=(.+?),/);			
+				my $mpdiff = $1 if ($pooldata =~ m/Last.+Last Share Difficulty=(\d+\.\d+),/);
+				my $mprej = $1 if ($pooldata =~ m/Pool Rejected%=(\d+\.\d+),/);			
 				my $ucount = 0; my $upsth; 
 	    	my $upall = $pdbh->selectall_arrayref("SELECT URL, Worker, LastUsed FROM Pools"); 
 				foreach my $uprow (@$upall) {
