@@ -104,7 +104,6 @@ sub make_farm_html {
 					if ($npage == $shownode) {
 						$nddata .= "<div class='row'><div class='cell'>$loc</div>";
 					}
-
 					my $pname = "N/A"; my $pdata;
 	 				if ($pools ne "None") {
 	 				 	my $plm=0; 
@@ -120,8 +119,14 @@ sub make_farm_html {
 						}
 	 		    	$pdata .= "<td>" . $pname . "</td>";	 		    
 						if ($npage == $shownode) {
-							while ($pools =~ m/POOL=(\d).+,?URL=(.+\/\/.+?:\d+?),(.+)?Status=(\w+?),Priority=(\d),.+,User=(.+),Last.+Last Share Difficulty=(\d+\.\d+),.+,Pool Rejected%=(\d+\.\d+),/g) {
-								my $poolid = $1; my $purl = $2; my $pstat = $4; my $ppri = $5; my $puser = $6; my $pdiff = $7; my $prej = $8; 
+							while ($pools =~ m/POOL=(\d),(.+)\n/g) {
+								my $poolid = $1; my $pooldata = $2; 
+								my $purl = $1 if ($pooldata =~ m/URL=(.+?\/\/.+?:\d+?),/);
+								my $pstat = $1 if ($pooldata =~ m/Status=(\w+?),/);
+								my $ppri = $1 if ($pooldata =~ m/Priority=(\d),/);
+								my $puser = $1 if ($pooldata =~ m/User=(.+?),/);			
+								my $pdiff = $1 if ($pooldata =~ m/Last.+Last Share Difficulty=(\d+\.\d+),/);
+								my $prej = $1 if ($pooldata =~ m/Pool Rejected%=(\d+\.\d+),/);							   
 								my @pdata = $dbh->selectrow_array("SELECT LastUsed, Alias FROM Pools WHERE URL= ? AND Worker= ?", undef, $purl, $puser);
 	  						my ($plast, $palias) = @pdata;
 	  						if ($plast > 0) {
@@ -154,8 +159,6 @@ sub make_farm_html {
 							}
 						}
 	 				}
-
-
 	 				my $shwe = 0; my $srrat = 0; my $shrl = 0; 
 		 			if ($devices ne "None") {		
 		 				my @dproblem;
