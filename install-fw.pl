@@ -68,6 +68,7 @@ sub doInstall {
 	    if (-d $webdir && -d $cgidir) { 
 			print "Copying files...\n" if ($flag ne "-q");
 			#perl chown requires UID and make_path is broken, so
+    	make_path $appdir;
     	copy "farmstatus.pl", $cgidir;
     	`ln -s $cgidir/farmstatus.pl $cgidir/farmstatus`;
 			copy "farmsettings.pl", $cgidir;
