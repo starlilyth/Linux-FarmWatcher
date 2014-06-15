@@ -71,9 +71,9 @@ sub doInstall {
     	make_path $appdir;
 			`chown $apacheuser $appdir`;
     	copy "farmstatus.pl", $cgidir;
-    	`ln -s $cgidir/farmstatus.pl $cgidir/farmstatus`;
+    	`ln -s $cgidir/farmstatus.pl $cgidir/farmstatus` if (!-e "$cgidir/farmstatus.pl $cgidir/farmstatus");
 			copy "farmsettings.pl", $cgidir;
-    	`ln -s $cgidir/farmsettings.pl $cgidir/farmsettings`;
+    	`ln -s $cgidir/farmsettings.pl $cgidir/farmsettings` if (!-e "$cgidir/farmstatus.pl $cgidir/farmsettings");
     	copy "favicon.ico", $webdir;
     	copy "fw-common.pl", $appdir;
       copy "run-farmwatcher.pl", $appdir;

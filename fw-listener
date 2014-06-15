@@ -31,7 +31,7 @@ while($socket) {
       my $ip = $socket->recv(my $data, 8000);
       my ($port, $ipaddr) = sockaddr_in($socket->peername);
       my $host = inet_ntoa($ipaddr); 
-      my $mname; my $mfgroup; my $mver; my @summary; my @pools; my @gpus;
+      my $mname; my $mfgroup; my $mver; my @summary; my @pools; my @devices;
       if ($data =~ m/^(.+?)\|(.+?)\|/) {
         $mname = $1; $mfgroup = $2; 
       }
@@ -40,7 +40,7 @@ while($socket) {
       }
 #      print "$data\n";
       while ($data =~ m/\|\d+\:(\{.+?\})/g) {
-        push(@gpus, decode_json $1);
+        push(@devices, decode_json $1);
       }
       while ($data =~ m/pool\:(\{.+?\})/g) {
         push(@pools, decode_json $1);
@@ -49,19 +49,20 @@ while($socket) {
         push(@summary, decode_json $1);
       }
       print "recvd packet from $host $mname\n" if (defined $verbose);      
-      updateMiner($host,$mname,$mfgroup,$mver,\@summary,\@pools,\@gpus);
+      updateMiner($host,$mname,$mfgroup,$mver,\@summary,\@pools,\@devices);
     }     
   } 
  sleep(2);
 }
 
 sub updateMiner {
-  my ($host,$mname,$mfgroup,$mver,$summary,$pools,$gpus) = @_;
+  my ($host,$mname,$mfgroup,$mver,$summary,$pools,$devices) = @_;
   my @summary = @{ $summary };
   my @pools = @{ $pools };
-  my @gpus = @{ $gpus };
+  my @devices = @{ $devices };
   my $dbname = "/opt/ifmi/fm.db"; my $now = time;
   if (-e $dbname) {
+    my $instance = "UDP"; $instance = "UDP-A" if ($mname =~ m/-asic$/); 
     my $msum = "";
     if (@summary ne "") {
       $msum .= "Elapsed=" . ${$summary[0]}{'elapsed'} . ",";
@@ -88,28 +89,41 @@ sub updateMiner {
       }
     }
     my $mgpus = ""; 
-    if (@gpus ne "") {
-      for (my $i=0;$i<@gpus;$i++) {    
-        $mgpus .= "GPU=$i,";
-        $mgpus .= "Status=" . $gpus[$i]{'status'} . ",";
-        $mgpus .= "MHS 5s=" . $gpus[$i]{'hashrate'}/1000 . ",";
-        $mgpus .= "Pool=" . $gpus[$i]{'pool_url'} . ",";
-        $mgpus .= "Accepted=" . $gpus[$i]{'shares_accepted'} . ",";
-        $mgpus .= "Rejected=" . $gpus[$i]{'shares_invalid'} . ",";
-        $mgpus .= "Hardware Errors=" . $gpus[$i]{'hardware_errors'} . ",";
-        $mgpus .= "Temperature=" . $gpus[$i]{'current_temp_0_c'} . ",";
-        $mgpus .= "Fan Speed=" . $gpus[$i]{'fan_rpm_c'} . ",";
-        $mgpus .= "Fan Percent=" . $gpus[$i]{'fan_speed_c'} . ",";
-        $mgpus .= "Intensity=" . $gpus[$i]{'intensity'} . ",";
-        $mgpus .= "GPU Clock=" . $gpus[$i]{'current_core_clock_c'} . ",";
-        $mgpus .= "Memory Clock=" . $gpus[$i]{'current_mem_clock_c'} . ",";
-        $mgpus .= "GPU Voltage=" . $gpus[$i]{'current_core_voltage_c'} . ",";
-        $mgpus .= "\n";
+    if (@devices ne "") {
+      if ($instance eq "UDP-A") {
+        for (my $i=0;$i<@devices;$i++) {    
+          $mgpus .= "ASC=$i,";
+          $mgpus .= "Status=" . $devices[$i]{'status'} . ",";
+          $mgpus .= "MHS 5s=" . $devices[$i]{'hashrate'}/1000 . ",";
+          $mgpus .= "Pool=" . $devices[$i]{'pool_url'} . ",";
+          $mgpus .= "Accepted=" . $devices[$i]{'shares_accepted'} . ",";
+          $mgpus .= "Rejected=" . $devices[$i]{'shares_invalid'} . ",";
+          $mgpus .= "Hardware Errors=" . $devices[$i]{'hardware_errors'} . ",";
+          $mgpus .= "Temperature=" . $devices[$i]{'current_temp_0_c'} . ",";
+        }
+      } else {
+        for (my $i=0;$i<@devices;$i++) {    
+          $mgpus .= "GPU=$i,";
+          $mgpus .= "Status=" . $devices[$i]{'status'} . ",";
+          $mgpus .= "MHS 5s=" . $devices[$i]{'hashrate'}/1000 . ",";
+          $mgpus .= "Pool=" . $devices[$i]{'pool_url'} . ",";
+          $mgpus .= "Accepted=" . $devices[$i]{'shares_accepted'} . ",";
+          $mgpus .= "Rejected=" . $devices[$i]{'shares_invalid'} . ",";
+          $mgpus .= "Hardware Errors=" . $devices[$i]{'hardware_errors'} . ",";
+          $mgpus .= "Temperature=" . $devices[$i]{'current_temp_0_c'} . ",";
+          $mgpus .= "Fan Speed=" . $devices[$i]{'fan_rpm_c'} . ",";
+          $mgpus .= "Fan Percent=" . $devices[$i]{'fan_speed_c'} . ",";
+          $mgpus .= "Intensity=" . $devices[$i]{'intensity'} . ",";
+          $mgpus .= "GPU Clock=" . $devices[$i]{'current_core_clock_c'} . ",";
+          $mgpus .= "Memory Clock=" . $devices[$i]{'current_mem_clock_c'} . ",";
+          $mgpus .= "GPU Voltage=" . $devices[$i]{'current_core_voltage_c'} . ",";
+          $mgpus .= "\n";
+        }
       }
     }
     my $dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
-    my $nmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port = 'UDP'", undef, $host);
-    my $tmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port != 'UDP'", undef, $host);
+    my $nmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port =?", undef, $host,$instance);
+    my $tmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port != ?", undef, $host,$instance);
     if (!defined $tmcheck) {
       if (!defined $nmcheck) {
         $dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access, MonProf, Amail) VALUES ('$host', 'UDP', '$mname', '', '', '$mfgroup', '$now', '$mgpus', '$mpools', '$msum', '$mver', 'D', '0', 'N')");
