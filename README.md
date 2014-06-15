@@ -3,30 +3,16 @@ Linux-FarmWatcher
 
 Read only version of FarmManager
 
-Manual Install Instructions:
 REQUIRES A WEBSERVER (APACHE) WITH CGI ENABLED. 
 And a few Perl Modules... 
 
-Copy images/ to your web root (/var/www/html)
+INSTALL: run install-fw.pl
 
-Copy fmdefault.css to a directory named IFMI in your web root. 
+Backwards compatible with FarmView (previously included in Linux-PoolManager). 
+BAMT/SMOS/PIMP clients using UDP status broadcast will be detected and added to the farm. 
 
-Copy farmstatus.pl to your cgi directory (/usr/lib/cgi-bin), then ln -s farmstatus.pl farmstatus. 
+Or you can add miners by IP and port, and FarmWatcher will pull the data over tcp, provided the FarmWatcher host can reach the miner, and the miner has allowed the FarmWatcher host ReadOnly access (at minimum). 
 
-Copy farmsettings.pl to your cgi directory (/usr/lib/cgi-bin), then ln -s farmsettings.pl farmsetings
-
-Copy everything else (run-farmmanager.pl, fm-common.pl, fm-getdata.pl) to /opt/imfi
-
-Do: chown /opt/ifmi www-data (or whatever your webserver user is. 'apache' on centos)
-
-Add the following to your /etc/crontab:
-    * * * * * root /opt/ifmi/run-farmmanager.pl
-
-
-Provided the FarmWatcher host can reach a miner, and the miner has allowed the FarmWatcher host ReadOnly access
-(at minimum), you should now be able to add it to your farm. 
-
-You can put the /opt/ifmi files on a remote host, like inside your firewall, 
+You can copy the /opt/ifmi files on a remote host, like inside your firewall, 
 then use scp or rsync and cron to copy /opt/ifmi/fm.db once a minute to whatever host has the CGI pages. 
-
 This will allow you to monitor a farm without opening a firewall/router port. 
