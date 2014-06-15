@@ -122,15 +122,15 @@ sub updateMiner {
       }
     }
     my $dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
-    my $nmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port =?", undef, $host,$instance);
+    my $nmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port= ?", undef, $host,$instance);
     my $tmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port != ?", undef, $host,$instance);
     if (!defined $tmcheck) {
       if (!defined $nmcheck) {
-        $dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access, MonProf, Amail) VALUES ('$host', 'UDP', '$mname', '', '', '$mfgroup', '$now', '$mgpus', '$mpools', '$msum', '$mver', 'D', '0', 'N')");
+        $dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access, MonProf, Amail) VALUES ('$host', '$instance', '$mname', '', '', '$mfgroup', '$now', '$mgpus', '$mpools', '$msum', '$mver', 'D', '0', 'N')");
         print "added $host $mname\n" if (defined $verbose);     
       } else {
-        my $sth = $dbh->prepare("UPDATE Miners SET Version= ?, Devices= ?, Pools= ?, Summary= ?, Updated= ? WHERE IP= ? AND Port= 'UDP' ");
-        $sth->execute($mver, $mgpus, $mpools, $msum, $now, $host); $sth->finish();
+        my $sth = $dbh->prepare("UPDATE Miners SET Version= ?, Devices= ?, Pools= ?, Summary= ?, Updated= ? WHERE IP= ? AND Port= ? ");
+        $sth->execute($mver, $mgpus, $mpools, $msum, $now, $host, $instance); $sth->finish();
         print "updated $host $mname\n" if (defined $verbose);     
       }
     }
