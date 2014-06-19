@@ -38,7 +38,6 @@ while($socket) {
       if ($data =~ m/ver\:(.+?\|)/) {
         $mver = $1;
       }
-#      print "$data\n";
       while ($data =~ m/\|\d+\:(\{.+?\})/g) {
         push(@devices, decode_json $1);
       }
@@ -80,7 +79,7 @@ sub updateMiner {
     my $mpools = ""; 
     if (@pools ne "") {
       for (my $i=0;$i<@pools;$i++) {
-        $mpools .= "POOL=" . ${$pools[$i]}{'poolid'} . ","; 
+        $mpools .= "POOL=" . ${$pools[$i]}{'poolid'} . ",Name=,"; 
         $mpools .= "URL=" . ${$pools[$i]}{'url'} . ",";
         $mpools .= "Status=" . ${$pools[$i]}{'status'} . ",";
         $mpools .= "Priority=" . ${$pools[$i]}{'priority'} . ",.,";
@@ -100,6 +99,7 @@ sub updateMiner {
           $mgpus .= "Rejected=" . $devices[$i]{'shares_invalid'} . ",";
           $mgpus .= "Hardware Errors=" . $devices[$i]{'hardware_errors'} . ",";
           $mgpus .= "Temperature=" . $devices[$i]{'current_temp_0_c'} . ",";
+          $mgpus .= "\n";
         }
       } else {
         for (my $i=0;$i<@devices;$i++) {    
@@ -123,16 +123,13 @@ sub updateMiner {
     }
     my $dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
     my $nmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port= ?", undef, $host,$instance);
-    my $tmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port != ?", undef, $host,$instance);
-    if (!defined $tmcheck) {
-      if (!defined $nmcheck) {
-        $dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access, MonProf, Amail) VALUES ('$host', '$instance', '$mname', '', '', '$mfgroup', '$now', '$mgpus', '$mpools', '$msum', '$mver', 'D', '0', 'N')");
-        print "added $host $mname\n" if (defined $verbose);     
-      } else {
-        my $sth = $dbh->prepare("UPDATE Miners SET Version= ?, Devices= ?, Pools= ?, Summary= ?, Updated= ? WHERE IP= ? AND Port= ? ");
-        $sth->execute($mver, $mgpus, $mpools, $msum, $now, $host, $instance); $sth->finish();
-        print "updated $host $mname\n" if (defined $verbose);     
-      }
+    if (!defined $nmcheck) {
+      $dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access, MonProf, Amail) VALUES ('$host', '$instance', '$mname', '', '', '$mfgroup', '$now', '$mgpus', '$mpools', '$msum', '$mver', 'D', '0', 'N')");
+      print "added $host $mname\n" if (defined $verbose);     
+    } else {
+      my $sth = $dbh->prepare("UPDATE Miners SET Version= ?, Devices= ?, Pools= ?, Summary= ?, Updated= ? WHERE IP= ? AND Port= ? ");
+      $sth->execute($mver, $mgpus, $mpools, $msum, $now, $host, $instance); $sth->finish();
+      print "updated $host $mname\n" if (defined $verbose);     
     }
   }
 }

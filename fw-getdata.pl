@@ -91,7 +91,7 @@ sub updatePools {
 		my ($mpools, $mdevs, $mupdated) = @$mprow;
 		if (($mupdated+90 > $now) && (defined $mpools && $mpools ne "") && (defined $mdevs && $mdevs ne "")) {
 			my $mpoid; my $mpurl; my $mpstat; my $mppri; my $mpuser; my $mpdiff; my $mprej;  
-			while ($mpools =~ m/POOL=(\d),(.+)\n/g) {
+			while ($mpools =~ m/POOL=(\d),(.+)/g) {
 				my $mpoid = $1; my $pooldata = $2; 
 				my $mpurl = $1 if ($pooldata =~ m/URL=(.+?\/\/.+?:\d+?),/);
 				my $mpstat = $1 if ($pooldata =~ m/Status=(\w+?),/);
