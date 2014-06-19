@@ -530,11 +530,11 @@ sub make_farm_html {
 				if (length($puser) > 20) { 
 		    	$puser = substr($puser, 0, 6) . " ... " . substr($puser, -6, 6) if (index($puser, '.') < 0);
 		  	} 
-		  	$pdiff = sprintf("%.3f", $pdiff);
-		  	$prej = sprintf("%.2f", $prej);
+		  	$pdiff = sprintf("%.3f", $pdiff) if (defined $pdiff);
+		  	$prej = sprintf("%.2f", $prej) if (defined $prej);
 		    $phtml .= "<div class='cell'>$puser</div>";
-		    $phtml .= "<div class='cell'>$pdiff</div>";
-		    $phtml .= "<div class='cell'>$prej</div>";
+		    $phtml .= "<div class='cell'>$pdiff</div>" if (defined $pdiff);
+		    $phtml .= "<div class='cell'>$prej</div>" if (defined $prej);
 		    $phtml .= "<div class='cell'>$ppri</div>";
 		    $phtml .= "<div class='cell'>$palias</div>";
 		    $phtml .= "</div>";
