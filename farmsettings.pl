@@ -435,7 +435,6 @@ sub run_farmsettings_as_cgi {
 	$html .= "<div id='logo' class='odata'><IMG src='/images/IFMI-FM-logo.png'></div>" ;
 	$html .= "<div class='odata'><h2>$fm_name \@ $iptxt</h2></div>";
 	$html .= "<div id='icon' class='odata'><a href='farmstatus'><img src='/images/overview.png'></a></div>";
-	$html .= "<div id='overviewend' class='odata'><br></div>";
 	$html .= "</div>";
 	$html .= "<div id='confpage' class='container'>";
 	$html .= "<div id='confform' class='content'>";
