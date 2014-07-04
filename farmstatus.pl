@@ -626,7 +626,6 @@ sub make_farm_html {
 			$head .= 's' if ($pcount != 1);
 			$head .= "</div>";
 			$head .= "<div id='icon' class='odata'><a href='farmsettings'><img src='/images/gear.png'></a></div>";
-			$head .= "<div id='overviewend' class='odata'><br></div>";
 		$head .= "</div>";
 		$dbh->disconnect();
 	} else {
