@@ -1,77 +1,76 @@
-/* default.CSS for FarmManager
+/* default.CSS for FarmWatcher
 
 Theme: default
-This is the original look for FarmManager. 
+This is the original look for FarmWatcher.
 
-   Updated: 20140501 
+   Updated: 20140501
 -------------------------------------*/
 
 /* all text on the page */
 body {
-  	background-color: #FFFFFF;
-  	color: #000000;
-  	font-family: "Trebuchet MS", Helvetica, sans-serif;
+    background-color: #FFFFFF;
+    color: #000000;
+    font-family: "Trebuchet MS", Helvetica, sans-serif;
     font-size: 13px;
-  	border: 0px;
-  	margin: 0px;
-  	padding: 0px;
+    border: 0px;
+    margin: 0px;
+    padding: 0px;
 }
 
 a {
- 	color: #000000;
+  color: #000000;
 }
 
 /* OVERVIEW */
 #overview {
   color: #ffffff;
   position: relative;
- 	display: block;
- 	z-index: 1;
+  display: block;
+  z-index: 1;
   /* Safari 4-5, Chrome 1-9 */
-  	background: -webkit-gradient(linear, top, bottom, from(#0000CC), to(#3366FF));  
+    background: -webkit-gradient(linear, top, bottom, from(#0000CC), to(#3366FF));
   /* Safari 5.1+, Chrome 10+ */
- 	background: -webkit-linear-gradient(top, #0000CC, #3366FF);  
+  background: -webkit-linear-gradient(top, #0000CC, #3366FF);
   /* Firefox 3.6+ */
- 	background: -moz-linear-gradient(top, #0000CC, #3366FF);
+  background: -moz-linear-gradient(top, #0000CC, #3366FF);
   /* IE 10 */
-  	background: -ms-linear-gradient(top, #0000CC, #3366FF);  
+    background: -ms-linear-gradient(top, #0000CC, #3366FF);
   /* Opera 11.10+ */
-  	background: -o-linear-gradient(top, #0000CC, #3366FF);
-  	background-color: #222222;
+    background: -o-linear-gradient(top, #0000CC, #3366FF);
+    background-color: #222222;
+    overflow: hidden;
+
+
 }
 .odata {
-  float: left;
-  padding: 10px;
-  font-size: 16px;
+    float: left;
+  position: relative;
+    font-size: 16px;
+    padding: 10px;
+  display: block;
+  height: 63px;
 }
 #overviewhash {
   font-size: 30px;
 }
-#overviewend {
-  float: none;
-  height: 63px;
-}
 #logo {
-  display:block;
-  padding: 4px;
-  height: 63px;
-  width: 155px;
+    height: 63px;
+    padding: 4px;
+    width: 155px;
 }
 #icon {
-  display:block;
-  padding: 14px;
-  height: 63px;
-  width: 155px;
-  float: right;
+    float: right;
+    height: 50px;
+    padding: 14px;
+    width: 50px;
 }
 
 
 /* CONTENT */
 .content {
-  	padding: 12px;
-  	vertical-align: top;
-  	display: block;
-  	text-align: left;
+    padding: 12px;
+    display: block;
+    text-align: left;
 }
 .error {
     color: #eee;
@@ -182,7 +181,5 @@ input:focus {
     font-weight: bold;
     min-width: 100px;
 }
-
-
 
 
