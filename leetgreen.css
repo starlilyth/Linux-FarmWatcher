@@ -1,0 +1,188 @@
+
+
+
+    body {
+        background-color: #111;
+        border: 0 none;
+        color: #19B526;
+        font-family: Tahoma,Geneva,sans-serif;
+        font-size: 14px;
+        margin: 0;
+        padding: 0;
+    }
+    a {
+        color: #91F786;
+    }
+
+    a:hover {
+            color: #E8E11E;
+    }
+    #overview {
+            height: auto;
+        color: #19B526;
+        display: block;
+        position: relative;
+        z-index: 1;
+            padding: 10px;
+            overflow: hidden;
+    }
+    .odata {
+        float: left;
+            position: relative;
+        font-size: 16px;
+        padding: 10px;
+            display: block;
+            height: 63px;
+    }
+    #overviewhash {
+            color: #E8E11E;
+        font-size: 30px;
+    }
+    #logo {
+        height: 63px;
+        padding: 4px;
+        width: 155px;
+    }
+    #icon {
+        float: right;
+        height: 50px;
+        padding: 14px;
+        width: 50px;
+    }
+    .content {
+        display: block;
+        padding: 12px;
+        text-align: left;
+        vertical-align: top;
+    }
+    .error {
+        background-color: #FF0000;
+        color: #EEEEEE;
+        font-weight: bold;
+    }
+    .warn {
+                color: #111;
+        background-color: #FFFF00;
+        font-weight: bold;
+    }
+    .ok {
+        color: #111;
+        background-color: #00FF00;
+    }
+
+    #pools {
+
+    width: 95%;
+    }
+
+    #pools #locsum {
+            width: 100%;
+    }
+    .table {
+        border-collapse: collapse;
+        display: table;
+            width: 100%;
+    }
+    .title {
+        display: table-caption;
+        font-size: larger;
+        font-weight: bold;
+        text-align: center;
+    }
+    .header {
+        background-color: #073002;
+        display: table-header-group;
+        font-weight: bold;
+        text-align: center;
+    }
+    .row {
+        display: table-row;
+            padding: 3px;
+
+
+    }
+    .cell {
+        border: thin solid #91F786;
+        display: table-cell;
+        padding: 2px 5px;
+        text-align: center;
+    }
+    form {
+        border: 0 none;
+    }
+    .form {
+            color: #19B526;
+        background-color: #073002;
+                border: 1px solid #073002;
+        display: inline-block;
+    }
+    button, input, select, textarea {
+        font-family: inherit;
+        font-size: 90%;
+            color: #E8E11E;
+        background-color: #073002;
+            }
+    input:focus {
+        background: none repeat scroll 0 0 rgba(0, 0, 0, 0.1);
+        outline: medium none;
+    }
+    #locsum {
+            color: #19B526;
+        background-color: #073002;
+        border: 1px solid #073002;
+        font-size: 16px;
+        font-weight: bold;
+        padding: 2px;
+        text-align: left;
+        width: 95%;
+    }
+    #nodefail {
+        font-size: 16px;
+    }
+    #waiting {
+            color: #19B526;
+        background-color: #073002;
+            margin: 30px;
+        padding: 30px;
+        position: absolute;
+        top: 120px;
+    }
+    #farm table {
+        border: 0 none;
+        border-collapse: collapse;
+        margin: 6px;
+        text-align: center;
+        width: 94%;
+    }
+    #farm td {
+        border: 1px solid #073002;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+    #farm .nodehdr {
+            color: #19B526;
+        background-color: #073002;
+                font-weight: bold;
+    }
+    #farm .ndatahdr {
+            color: #19B526;
+        background-color: #073002;
+                font-weight: bold;
+        min-width: 100px;
+    }
+
+    #nodelist, #monlist {
+            margin: 20px;
+
+    }
+
+    #nodelist, #monlist, #poollist {
+            padding: 10px;
+    }
+
+    input[type="submit"] {
+            color:#111;
+    background: #E8E11E;
+    border: 2px solid #E8E11E;
+    }
+
