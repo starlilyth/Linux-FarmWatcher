@@ -80,7 +80,7 @@ sub doInstall {
     	copy "fw-getdata.pl", $appdir;
     	copy "fw-listener", $appdir;
 			make_path $webdir . '/IFMI/' ;
-    	`cp fwdefault.css $webdir/IFMI/`;
+    	`cp fw*.css $webdir/IFMI/themes`;
     	`cp -r images/ $webdir`;
     	`chmod 0755 $appdir/*.pl`; #because windows f's up the permissions. wtf.
     	`chmod 0755 $appdir/fw-listener`; #because windows
