@@ -115,7 +115,15 @@ sub make_settings_html {
 		$npn = "";
 	}
 
-	my $dbh; my $nodeh; my $phtml; my $head; my $mhtml;
+	my $nfwt = $in{'fwtheme'};
+	my $nfwp = $in{'ufwp'};
+	if (defined $nfwt || defined $nfwp) {
+		&setSettings($nfwt, $nfwp);
+		$nfwt = ""; $nfwp = "";
+	}
+
+
+	my $dbh; my $nodeh; my $phtml; my $head; my $mhtml; my $sethtml; my $fwt;
 	if (-e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr; my $sth;
 		my $adata = `cat /opt/ifmi/fwadata`;
@@ -405,13 +413,53 @@ sub make_settings_html {
 	    $phtml .= "</div>";
 	 	}
 		$phtml .= "</div></div>";
-		$dbh->disconnect();
 
+		my @sall = $dbh->selectrow_array("SELECT * FROM Settings");
+		my ($fcss, $fport, $unpdel, $supdated, $sstatus) = @sall;
+		$fwt = $fcss;
+		$sethtml .= "<div id='settings' class='form'>";
+	  $sethtml .= "<div class='table'>";
+		$sethtml .= "<div class='title'>Settings</div><br>";
+		$sethtml .= "<form name=setupdate method=post>";
+		$sethtml .= "<b>Edit Settings</b><br>";
+		$sethtml .= "<select name=fwtheme>";
+		my @csslist = glob("/var/www/IFMI/themes/fw*.css");
+    foreach my $file (@csslist) {
+      $file =~ s/\/var\/www\/IFMI\/themes\///;
+      if ("$file" eq "$fcss") {
+          $sethtml .= "<option value=$file selected>$file</option>";
+        } else {
+       		$sethtml .= "<option value=$file>$file</option>";
+        }
+    }
+		$sethtml .= "</select> ";
+		$sethtml .= "<input type='text' placeholder='Port' size=5 name='ufwp'> ";
+		$sethtml .= "<input type='submit' value='Set'>";
+		$sethtml .= "</form></div>";
+	  $sethtml .= "<div class='table'>";
+	  $sethtml .= "<div class='header'>";
+	  $sethtml .= "<div class='row'>";
+	  $sethtml .= "<div class='cell'>Theme</div>";
+	  $sethtml .= "<div class='cell'>Port</div>";
+	  # $sethtml .= "<div class='cell'>Auto Pool Delete</div>";
+	  # $sethtml .= "<div class='cell'>Last Update</div>";
+	  # $sethtml .= "<div class='cell'>Status</div>";
+		$sethtml .= "</div></div>";
+		$sethtml .= "<div class='row'>";
+		$sethtml .= "<div class='cell'>$fcss</div>";
+		$sethtml .= "<div class='cell'>$fport</div>";
+		# $sethtml .= "<div class='cell'>$unpdel</div>";
+		# $sethtml .= "<div class='cell'>$supdated</div>";
+		# $sethtml .= "<div class='cell'>$sstatus</div>";
+		$sethtml .= "</div>";
+		$sethtml .= "</div></div>";
+
+		$dbh->disconnect();
 	} else {
 		$nodeh .= "<div id='nodelist'><h1>Miner database not available!</H1></div>";
 		$phtml .= "";
 	}
-	return ($nodeh, $phtml, $mhtml);
+	return ($nodeh, $phtml, $mhtml, $sethtml, $fwt);
 }
 
 sub run_farmsettings_as_cgi {
@@ -423,13 +471,13 @@ sub run_farmsettings_as_cgi {
 	  while ($nicget =~ m/(\w\w\w\w?\d)(:0)?\s.+\n\s+inet addr:(\d+\.\d+\.\d+\.\d+)\s/g) {
 	  $iptxt = $3;
 	}
+	my ($nodeh, $phtml, $mhtml, $sethtml, $fwt) = make_settings_html($dbname, \%in);
 	my $q=CGI->new();
 	print header;
 	print start_html( -title=>$fm_name . ' - FM Settings',
-										-style=>{-src=>'/IFMI/fwdefault.css'},
+										-style=>{-src=>"/IFMI/themes/$fwt"},
 										-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30'}));
 
-	my ($nodeh, $phtml, $mhtml) = make_settings_html($dbname, \%in);
 	my $html;
 	$html .= "<div id='overview' nowrap>";
 	$html .= "<div id='logo' class='odata'><IMG src='/images/IFMI-FM-logo.png'></div>" ;
@@ -443,6 +491,7 @@ sub run_farmsettings_as_cgi {
 	print $nodeh;
 	print $mhtml;
 	print $phtml;
+	print "<br>" . $sethtml;
 	print "</div></div></BODY></HTML>";
 }
 

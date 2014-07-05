@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-#    This file is part of IFMI FarmManager.	
+#    This file is part of IFMI FarmManager.
 #
 use warnings;
 use strict;
@@ -14,13 +14,14 @@ if (Proc::PID::File->running()) {
   exit(0);
 }
 
+my $dbname = "/opt/ifmi/fm.db";
+my $dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr;
+my $listenport = $dbh->selectrow_array("SELECT Port FROM Settings");
+$dbh->disconnect();
+
 my $verbose;
-my $listenport = 54545;
-#if (defined($conf{settings}{listen_port})) {
-#  $listenport = $conf{settings}{listen_port};
-#}
-my $socket = IO::Socket::INET->new(Proto => 'udp', Type => SOCK_DGRAM, LocalPort => $listenport, Blocking  => 0) 
-or die "Cannot open socket.";
+my $socket = IO::Socket::INET->new(Proto => 'udp', Type => SOCK_DGRAM, LocalPort => $listenport, Blocking  => 0)
+or die "Cannot open port $listenport.";
 
 my $sel = IO::Select->new();
 $sel->add($socket);
@@ -30,10 +31,10 @@ while($socket) {
     foreach my $fh (@ready) {
       my $ip = $socket->recv(my $data, 8000);
       my ($port, $ipaddr) = sockaddr_in($socket->peername);
-      my $host = inet_ntoa($ipaddr); 
+      my $host = inet_ntoa($ipaddr);
       my $mname; my $mfgroup; my $mver; my @summary; my @pools; my @devices;
       if ($data =~ m/^(.+?)\|(.+?)\|/) {
-        $mname = $1; $mfgroup = $2; 
+        $mname = $1; $mfgroup = $2;
       }
       if ($data =~ m/ver\:(.+?\|)/) {
         $mver = $1;
@@ -47,10 +48,10 @@ while($socket) {
       while ($data =~ m/sum\:(\{.+?\})/g) {
         push(@summary, decode_json $1);
       }
-      print "recvd packet from $host $mname\n" if (defined $verbose);      
+      print "recvd packet from $host $mname\n" if (defined $verbose);
       updateMiner($host,$mname,$mfgroup,$mver,\@summary,\@pools,\@devices);
-    }     
-  } 
+    }
+  }
  sleep(2);
 }
 
@@ -61,7 +62,7 @@ sub updateMiner {
   my @devices = @{ $devices };
   my $dbname = "/opt/ifmi/fm.db"; my $now = time;
   if (-e $dbname) {
-    my $instance = "UDP"; $instance = "UDP-A" if ($mname =~ m/-asic$/); 
+    my $instance = "UDP"; $instance = "UDP-A" if ($mname =~ m/-asic$/);
     my $msum = "";
     if (@summary ne "") {
       $msum .= "Elapsed=" . ${$summary[0]}{'elapsed'} . ",";
@@ -76,10 +77,10 @@ sub updateMiner {
         } else { $mrat = "0.00"; }
       $msum .= "Device Rejected\%=" . $mrat . ",";
     }
-    my $mpools = ""; 
+    my $mpools = "";
     if (@pools ne "") {
       for (my $i=0;$i<@pools;$i++) {
-        $mpools .= "POOL=" . ${$pools[$i]}{'poolid'} . ",Name=,"; 
+        $mpools .= "POOL=" . ${$pools[$i]}{'poolid'} . ",Name=,";
         $mpools .= "URL=" . ${$pools[$i]}{'url'} . ",";
         $mpools .= "Status=" . ${$pools[$i]}{'status'} . ",";
         $mpools .= "Priority=" . ${$pools[$i]}{'priority'} . ",.,";
@@ -87,10 +88,10 @@ sub updateMiner {
         $mpools .= "\n";
       }
     }
-    my $mgpus = ""; 
+    my $mgpus = "";
     if (@devices ne "") {
       if ($instance eq "UDP-A") {
-        for (my $i=0;$i<@devices;$i++) {    
+        for (my $i=0;$i<@devices;$i++) {
           $mgpus .= "ASC=$i,";
           $mgpus .= "Status=" . $devices[$i]{'status'} . ",";
           $mgpus .= "MHS 5s=" . $devices[$i]{'hashrate'}/1000 . ",";
@@ -102,7 +103,7 @@ sub updateMiner {
           $mgpus .= "\n";
         }
       } else {
-        for (my $i=0;$i<@devices;$i++) {    
+        for (my $i=0;$i<@devices;$i++) {
           $mgpus .= "GPU=$i,";
           $mgpus .= "Status=" . $devices[$i]{'status'} . ",";
           $mgpus .= "MHS 5s=" . $devices[$i]{'hashrate'}/1000 . ",";
@@ -125,13 +126,14 @@ sub updateMiner {
     my $nmcheck = $dbh->selectrow_array("SELECT IP From Miners WHERE IP= ? AND Port= ?", undef, $host,$instance);
     if (!defined $nmcheck) {
       $dbh->do("INSERT INTO Miners(IP, Port, Name, User, Pass, Mgroup, Updated, Devices, Pools, Summary, Version, Access, MonProf, Amail) VALUES ('$host', '$instance', '$mname', '', '', '$mfgroup', '$now', '$mgpus', '$mpools', '$msum', '$mver', 'D', '0', 'N')");
-      print "added $host $mname\n" if (defined $verbose);     
+      print "added $host $mname\n" if (defined $verbose);
     } else {
       my $sth = $dbh->prepare("UPDATE Miners SET Version= ?, Devices= ?, Pools= ?, Summary= ?, Updated= ? WHERE IP= ? AND Port= ? ");
       $sth->execute($mver, $mgpus, $mpools, $msum, $now, $host, $instance); $sth->finish();
-      print "updated $host $mname\n" if (defined $verbose);     
+      print "updated $host $mname\n" if (defined $verbose);
     }
   }
+  $dbh->disconnect();
 }
 
 

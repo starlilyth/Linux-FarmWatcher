@@ -18,7 +18,7 @@ sub make_farm_html {
 	my $now = time;
 	my $dbh;
 	my $tothash = 0; my $thrh; my $totproblems = 0;
-	my $tlocs = 0; my $tnodes = 0;
+	my $tlocs = 0; my $tnodes = 0; my $fwt;
 	my $problemdevs = 0; my $okdevs = 0;
 	my $problemascs = 0; my $okascs = 0;
 	my $problemgpus = 0; my $okgpus = 0;
@@ -552,86 +552,91 @@ sub make_farm_html {
 		# Overview
 
 		$head = "<div id='overview' nowrap>";
-			$head .= '<div id="logo" class="odata"><a href="https://miner.farm/"><IMG src="/images/IFMI-FM-logo.png"></a></div>';
+		$head .= '<div id="logo" class="odata"><a href="https://miner.farm/"><IMG src="/images/IFMI-FM-logo.png"></a></div>';
 
-			$head .= "<div id='overviewhash' class='odata'>";
-			$thrh = sprintf("%.2f", $tothash / 1000 );
-			$head .= "$thrh Mh/s</div>";
+		$head .= "<div id='overviewhash' class='odata'>";
+		$thrh = sprintf("%.2f", $tothash / 1000 );
+		$head .= "$thrh Mh/s</div>";
 
-			$head .= "<div id='overviewdevs' class='odata'>";
-			if (($okgpus + $problemgpus) >0) {
-				if ($problemgpus == 0) {
-					$head .= "$okgpus GPUs in the farm<br>";
-				} else {
-					$head .= "$problemgpus of " . ($okgpus + $problemgpus) . " GPUs";
-					if ($problemgpus == 1) {
-						$head .= ' has problems<br>';
-					} else {
-				 		$head .= ' have problems<br>';
-					}
-				}
+		$head .= "<div id='overviewdevs' class='odata'>";
+		if (($okgpus + $problemgpus) >0) {
+			if ($problemgpus == 0) {
+				$head .= "$okgpus GPUs in the farm<br>";
 			} else {
-				$head .= "No GPUs in the farm<br>";
-			}
-			if (($okascs + $problemascs) >0) {
-				if ($problemascs == 0) {
-					$head .= "$okascs ASICs in the farm<br>";
+				$head .= "$problemgpus of " . ($okgpus + $problemgpus) . " GPUs";
+				if ($problemgpus == 1) {
+					$head .= ' has problems<br>';
 				} else {
-					$head .= "$problemascs of " . ($okascs + $problemascs) . " ASICs";
-					if ($problemascs == 1) {
-						$head .= ' has problems<br>';
-					} else {
-				 		$head .= ' have problems<br>';
-					}
+			 		$head .= ' have problems<br>';
 				}
-			} else {
-				$head .= "No ASICs in the farm<br>";
 			}
-			if (($okdevs + $problemdevs) >0) {
-				if ($problemdevs == 0) {
-					$head .= "$okdevs Devices Total";
+		} else {
+			$head .= "No GPUs in the farm<br>";
+		}
+		if (($okascs + $problemascs) >0) {
+			if ($problemascs == 0) {
+				$head .= "$okascs ASICs in the farm<br>";
+			} else {
+				$head .= "$problemascs of " . ($okascs + $problemascs) . " ASICs";
+				if ($problemascs == 1) {
+					$head .= ' has problems<br>';
 				} else {
-					$head .= "$problemdevs of " . ($okdevs + $problemdevs) . " Devices";
-					if ($problemdevs == 1) {
-						$head .= ' has problems';
-					} else {
-				 		$head .= ' have problems';
-					}
+			 		$head .= ' have problems<br>';
 				}
-			} else {
-				$head .= "No Devices in the farm!";
 			}
-			$head .= "</div>";
-
-			$head .= "<div id='overviewtotals' class='odata'>";
-			$head .= "$tnodes node";
-			$head .= 's' if ($tnodes != 1);
-			$head .= " in ";
-			$head .= "$tlocs location";
-			$head .= 's' if ($tlocs > 1);
-			$head .= '<br>';
-			if ($problemnodes == 0) {
-				$head .= "All nodes are OK";
+		} else {
+			$head .= "No ASICs in the farm<br>";
+		}
+		if (($okdevs + $problemdevs) >0) {
+			if ($problemdevs == 0) {
+				$head .= "$okdevs Devices Total";
 			} else {
-				$head .= $problemnodes . " node";
-				if ($problemnodes == 1) {
-					$head .= ' has ';
+				$head .= "$problemdevs of " . ($okdevs + $problemdevs) . " Devices";
+				if ($problemdevs == 1) {
+					$head .= ' has problems';
 				} else {
-		 			$head .= 's have ';
+			 		$head .= ' have problems';
 				}
-				$head .= $totproblems . " problem";
-				$head .= 's' if ($totproblems != 1);
 			}
-			$head .= "<br>$pcount active pool account";
-			$head .= 's' if ($pcount != 1);
-			$head .= "</div>";
-			$head .= "<div id='icon' class='odata'><a href='farmsettings'><img src='/images/gear.png'></a></div>";
+		} else {
+			$head .= "No Devices in the farm!";
+		}
 		$head .= "</div>";
+
+		$head .= "<div id='overviewtotals' class='odata'>";
+		$head .= "$tnodes node";
+		$head .= 's' if ($tnodes != 1);
+		$head .= " in ";
+		$head .= "$tlocs location";
+		$head .= 's' if ($tlocs > 1);
+		$head .= '<br>';
+		if ($problemnodes == 0) {
+			$head .= "All nodes are OK";
+		} else {
+			$head .= $problemnodes . " node";
+			if ($problemnodes == 1) {
+				$head .= ' has ';
+			} else {
+	 			$head .= 's have ';
+			}
+			$head .= $totproblems . " problem";
+			$head .= 's' if ($totproblems != 1);
+		}
+		$head .= "<br>$pcount active pool account";
+		$head .= 's' if ($pcount != 1);
+		$head .= "</div>";
+		$head .= "<div id='icon' class='odata'><a href='farmsettings'><img src='/images/gear.png'></a></div>";
+		$head .= "</div>";
+
+		my @sall = $dbh->selectrow_array("SELECT * FROM Settings");
+		my ($fcss, $fport, $unpdel, $supdated, $sstatus) = @sall;
+		$fwt = $fcss;
+
 		$dbh->disconnect();
 	} else {
 		$html .= "<div id='waiting' class='content'><h1>Miner database not available!</H1><P>&nbsp;<P></div>";
 	}
-	return ($thrh, $head, $shownode > -1 ? $ndhtml : $html);
+	return ($thrh, $head, $shownode > -1 ? $ndhtml : $html, $fwt);
 }
 
 sub run_farmstatus_as_cgi {
@@ -651,18 +656,18 @@ sub run_farmstatus_as_cgi {
 	}
 
 	# Put it all together
-	my ($thrh, $head, $html) = make_farm_html($dbname, $shownode);
+	my ($thrh, $head, $html, $fwt) = make_farm_html($dbname, $shownode);
 
 	print $q->header;
 	if ($url =~ m/\?.+/) {
 		print $q->start_html( -title=>$fm_name . ' - ' . $thrh  . ' Mh/s',
-			-style=>{-src=>'/IFMI/fwdefault.css'},
+			-style=>{-src=>"/IFMI/themes/$fwt"},
 			-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30'})
 		);
 	} else {
 		$url .= "overview";
 		print $q->start_html( -title=>$fm_name . ' - ' . $thrh  . ' Mh/s',
-			-style=>{-src=>'/IFMI/fwdefault.css'},
+			-style=>{-src=>"/IFMI/themes/$fwt"},
 			-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30; url=' . $url })
 		);
 	}
