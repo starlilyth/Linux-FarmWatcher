@@ -474,7 +474,7 @@ sub run_farmsettings_as_cgi {
 	my ($nodeh, $phtml, $mhtml, $sethtml, $fwt) = make_settings_html($dbname, \%in);
 	my $q=CGI->new();
 	print header;
-	print start_html( -title=>$fm_name . ' - FM Settings',
+	print start_html( -title=>$fm_name . ' - FW Settings',
 										-style=>{-src=>"/IFMI/themes/$fwt"},
 										-head=>$q->meta({-http_equiv=>'REFRESH',-content=>'30'}));
 

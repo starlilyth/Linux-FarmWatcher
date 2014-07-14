@@ -71,9 +71,9 @@ sub doInstall {
     	make_path $appdir;
 			`chown $apacheuser $appdir`;
     	copy "farmstatus.pl", $cgidir;
-    	`ln -s $cgidir/farmstatus.pl $cgidir/farmstatus` if (!-e "$cgidir/farmstatus.pl $cgidir/farmstatus");
+    	`ln -s $cgidir/farmstatus.pl $cgidir/farmstatus 2>&1 > /dev/null` if (!-e "$cgidir/farmstatus.pl $cgidir/farmstatus");
 			copy "farmsettings.pl", $cgidir;
-    	`ln -s $cgidir/farmsettings.pl $cgidir/farmsettings` if (!-e "$cgidir/farmstatus.pl $cgidir/farmsettings");
+    	`ln -s $cgidir/farmsettings.pl $cgidir/farmsettings 2>&1 > /dev/null` if (!-e "$cgidir/farmstatus.pl $cgidir/farmsettings");
     	copy "favicon.ico", $webdir;
     	copy "fw-common.pl", $appdir;
       copy "run-farmwatcher.pl", $appdir;
@@ -184,8 +184,8 @@ sub doInstall {
 			}
 			`service apache2 restart` if ($restart > 0);
 		}
-
-		print "Done! STOP FARMVIEW IF YOU HAVE IT! Thank you for flying IFMI!\n" if ($flag ne "-q");
+    print "STOP FARMVIEW IF YOU HAVE IT!" if ($flag ne "-q");
+		print "Done! Thank you for flying IFMI!\n";
 	} else {
 		print "Cant determine apache user, Bailing out!\n";
 		$instlog .= "unknown apache user, bailed out.\n";
