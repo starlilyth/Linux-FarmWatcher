@@ -25,7 +25,7 @@ sub make_farm_html {
 	my $problemnodes = 0; my $oknodes = 0;
 	my $problempools = 0; my $okpools = 0;
 	my $html = "<div id='farm' class='content'>";
-	my $adata = `cat /opt/ifmi/fwadata`;
+	my $adata = `cat /tmp/fwadata`;
 	$html .= "<div class='cell' id=adblock>$adata</td></div><br>" if ($adata ne "");
 	my $head;	my $ndhtml = "<div id='node' class='content'>";
 

@@ -22,7 +22,7 @@ while ($continue) {
 	&doGetData;
 	&dolistener;
  # Get the ad
-  `wget --quiet -T 10 -O /opt/ifmi/fwadata http://ads.miner.farm/pm.html`;
+  `cd /tmp ; wget --quiet -N http://ads.miner.farm/pm.html ; cp pm.html fwadata`;
 	sleep 30;
 }
 
@@ -38,4 +38,4 @@ sub dolistener {
   }
 }
 
-1; 
+1;

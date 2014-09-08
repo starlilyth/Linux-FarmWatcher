@@ -126,7 +126,7 @@ sub make_settings_html {
 	my $dbh; my $nodeh; my $phtml; my $head; my $mhtml; my $sethtml; my $fwt;
 	if (-e $dbname) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$dbname", { RaiseError => 1 }) or die $DBI::errstr; my $sth;
-		my $adata = `cat /opt/ifmi/fwadata`;
+		my $adata = `cat /tmp/fwadata`;
 		$nodeh .= "<div class='cell' id=adblock>$adata</td></div><br>" if ($adata ne "");
 		$nodeh .= "<div id='nodelist' class='form'>";
 		my $ncount = $dbh->selectrow_array("SELECT COUNT() FROM Miners");
